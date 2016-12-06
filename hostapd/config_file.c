@@ -21,6 +21,9 @@
 #include "ap/ap_config.h"
 #include "config_file.h"
 
+/* Secure Open AP (SOAP) by Seokseong Jeon songsong@monet.postech.ac.kr */
+#include "crypto/dh_groups.h"
+
 
 #ifndef CONFIG_NO_RADIUS
 #ifdef EAP_SERVER
@@ -2534,6 +2537,10 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 	} else if (os_strcmp(buf, "peerkey") == 0) {
 		bss->peerkey = atoi(pos);
 #endif /* CONFIG_PEERKEY */
+	/* Secure Open AP (SOAP) by Seokseong Jeon songsong@monet.postech.ac.kr */
+	} else if (os_strcmp(buf, "soap") == 0) {
+		bss->soap=atoi(pos);
+		bss->soap_dh_group = dh_groups_get(14);
 #ifdef CONFIG_IEEE80211R
 	} else if (os_strcmp(buf, "mobility_domain") == 0) {
 		if (os_strlen(pos) != 2 * MOBILITY_DOMAIN_ID_LEN ||
