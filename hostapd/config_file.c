@@ -21,7 +21,6 @@
 #include "ap/ap_config.h"
 #include "config_file.h"
 
-/* Secure Open AP (SOAP) by Seokseong Jeon songsong@monet.postech.ac.kr */
 #ifdef CONFIG_SOAP
 #include "crypto/dh_groups.h"
 #endif
@@ -2539,7 +2538,6 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 	} else if (os_strcmp(buf, "peerkey") == 0) {
 		bss->peerkey = atoi(pos);
 #endif /* CONFIG_PEERKEY */
-	/* Secure Open AP (SOAP) by Seokseong Jeon songsong@monet.postech.ac.kr */
 #ifdef CONFIG_SOAP
 	} else if (os_strcmp(buf, "soap") == 0) {
 		bss->soap=atoi(pos);

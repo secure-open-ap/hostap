@@ -19,8 +19,9 @@
 #include "fst/fst.h"
 #include "vlan.h"
 
-/* Secure Open AP (SOAP) by Seokseong Jeon songsong@monet.postech.ac.kr */
+#ifdef CONFIG_SOAP
 #include "crypto/dh_groups.h"
+#endif /* CONFIG_SOAP */
 
 /**
  * mesh_conf - local MBSS state and settings
@@ -332,7 +333,6 @@ struct hostapd_bss_config {
 	char *rsn_preauth_interfaces;
 	int peerkey;
 
-	/* Secure Open AP (SOAP) by Seokseong Jeon songsong@monet.postech.ac.kr */
 #ifdef CONFIG_SOAP
 	int soap; /* use SOAP */
 	struct dh_group *soap_dh_group; /* exponent of Mersenne prime p */

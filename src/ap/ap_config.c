@@ -60,9 +60,10 @@ void hostapd_config_defaults_bss(struct hostapd_bss_config *bss)
 	bss->wpa_group = WPA_CIPHER_TKIP;
 	bss->rsn_pairwise = 0;
 
-	/* Secure Open AP (SOAP) by Seokseong Jeon songsong@monet.postech.ac.kr */
+	#ifdef CONFIG_SOAP
 	bss->soap = 0;
 	bss->soap_dh_group = NULL;
+	#endif /* CONFIG_SOAP */
 
 	bss->max_num_sta = MAX_STA_COUNT;
 
