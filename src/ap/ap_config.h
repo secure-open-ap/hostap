@@ -333,8 +333,10 @@ struct hostapd_bss_config {
 	int peerkey;
 
 	/* Secure Open AP (SOAP) by Seokseong Jeon songsong@monet.postech.ac.kr */
+#ifdef CONFIG_SOAP
 	int soap; /* use SOAP */
-	struct dh_group soap_dh_group; /* exponent of Mersenne prime p */
+	struct dh_group *soap_dh_group; /* exponent of Mersenne prime p */
+#endif /* CONFIG_SOAP */
 
 #ifdef CONFIG_IEEE80211R_AP
 	/* IEEE 802.11r - Fast BSS Transition */

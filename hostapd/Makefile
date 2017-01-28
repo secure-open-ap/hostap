@@ -1026,6 +1026,10 @@ OBJS += ../src/fst/fst_ctrl_iface.o
 endif
 endif
 
+ifdef CONFIG_SOAP
+OBJS += ../src/crypto/dh_groups.o
+endif
+
 ALL=hostapd hostapd_cli
 
 all: verify_config $(ALL)
