@@ -1028,6 +1028,7 @@ endif
 
 ifdef CONFIG_SOAP
 OBJS += ../src/crypto/dh_groups.o
+OBJS += ../src/ap/soap.o
 endif
 
 ALL=hostapd hostapd_cli

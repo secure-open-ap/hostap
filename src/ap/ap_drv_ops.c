@@ -177,6 +177,20 @@ int hostapd_build_ap_extra_ies(struct hostapd_data *hapd,
 	}
 #endif /* CONFIG_MBO */
 
+#ifdef CONFIG_SOAP
+	/*
+	 * SOAP TODO: Currently, SOAP is implemented based on assumption that WPA is used,
+	 * but should support open system and shared key system (WEP) by running WPA
+	 * dedicated for SOAP.
+	 */
+	if (hapd->conf->soap && (hapd->conf->wpa & (WPA_PROTO_WPA | WPA_PROTO_RSN))) {
+		pos = hostapd_eid_soap(hapd, buf);
+		if (add_buf_data(&beacon, buf, pos - buf) < 0 ||
+		    add_buf_data(&proberesp, buf, pos - buf) < 0)
+			goto fail;
+	}
+#endif /* CONFIG_SOAP */
+
 	add_buf(&beacon, hapd->conf->vendor_elements);
 	add_buf(&proberesp, hapd->conf->vendor_elements);
 	add_buf(&assocresp, hapd->conf->assocresp_elements);
