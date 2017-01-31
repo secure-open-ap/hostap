@@ -1027,6 +1027,7 @@ endif
 endif
 
 ifdef CONFIG_SOAP
+CFLAGS += -DCONFIG_SOAP
 OBJS += ../src/crypto/dh_groups.o
 OBJS += ../src/ap/soap.o
 endif
