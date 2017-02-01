@@ -21,10 +21,6 @@
 #include "hs20.h"
 #include "ap_drv_ops.h"
 
-#include "utils/wpa_debug.h"
-#ifdef CONFIG_SOAP
-#include "ap/soap.h"
-#endif /* CONFIG_SOAP */
 
 u32 hostapd_sta_flags_to_drv(u32 flags)
 {
@@ -180,28 +176,6 @@ int hostapd_build_ap_extra_ies(struct hostapd_data *hapd,
 			goto fail;
 	}
 #endif /* CONFIG_MBO */
-
-#ifdef CONFIG_SOAP
-	/*
-	 * SOAP TODO: Currently, SOAP is implemented based on assumption that WPA is used,
-	 * but should support open system and shared key system (WEP) by running WPA
-	 * dedicated for SOAP.
-	 */
-	wpa_printf(MSG_DEBUG, "ap_drv_ops.c:hostapd_build_ap_extra_ies(): "
-	                      "CONFIG_SOAP is set.");
-	if (hapd->conf->soap && (hapd->conf->wpa & (WPA_PROTO_WPA | WPA_PROTO_RSN))) {
-		wpa_printf(MSG_DEBUG, "  SOAP will add SOAP IE.");
-		pos = hostapd_eid_soap(hapd, buf);
-		wpa_printf(MSG_DEBUG, "  SOAP completed copying SOAP IE to buf.");
-		wpa_printf(MSG_DEBUG, "    pos: %p, buf: %p, pos - buf: %ld",
-		           pos, buf, pos - buf);
-		if (add_buf_data(&beacon, buf, pos - buf) < 0 ||
-		    add_buf_data(&proberesp, buf, pos - buf) < 0) {
-			wpa_printf(MSG_DEBUG, "  SOAP failed to add IE to beacon and proberesp.");
-			goto fail;
-		}
-	}
-#endif /* CONFIG_SOAP */
 
 	add_buf(&beacon, hapd->conf->vendor_elements);
 	add_buf(&proberesp, hapd->conf->vendor_elements);
