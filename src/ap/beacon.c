@@ -397,6 +397,10 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 
 	buflen += hostapd_mbo_ie_len(hapd);
 
+#ifdef CONFIG_SOAP
+	buflen += hostapd_soap_ie_len(hapd);
+#endif /* CONFIG_SOAP */
+
 	resp = os_zalloc(buflen);
 	if (resp == NULL)
 		return NULL;
@@ -540,6 +544,16 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 			  wpabuf_len(hapd->conf->vendor_elements));
 		pos += wpabuf_len(hapd->conf->vendor_elements);
 	}
+
+#ifdef CONFIG_SOAP
+	/*
+	 * SOAP TODO: Currently, SOAP is implemented based on assumption that WPA is used,
+	 * but should support open system and shared key system (WEP) by running WPA
+	 * dedicated for SOAP.
+	 */
+	if (hapd->conf->soap && (hapd->conf->wpa & (WPA_PROTO_WPA | WPA_PROTO_RSN)))
+		pos = hostapd_eid_soap(hapd, pos);
+#endif /* CONFIG_SOAP */
 
 	*resp_len = pos - (u8 *) resp;
 	return (u8 *) resp;
