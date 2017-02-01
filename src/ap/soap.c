@@ -12,6 +12,18 @@
 #include "soap.h"
 /* SOAP TODO: Which headers should be includede? */
 
+u8 hostapd_soap_ie_len(struct hostapd_data *hapd)
+{
+  if (!hapd->conf->soap || !(hapd->conf->wpa & (WPA_PROTO_WPA | WPA_PROTO_RSN)))
+    return 0;
+
+  /*
+   * Information Element (octets)
+   * Element ID (1), Length (1), bool SOAP (1)
+   */
+  return 1 + 1 + 1;
+}
+
 u8 * hostapd_eid_soap(struct hostapd_data *hapd, u8 *eid)
 {
   u8 *ie;
