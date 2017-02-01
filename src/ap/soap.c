@@ -21,8 +21,9 @@ u8 * hostapd_eid_soap(struct hostapd_data *hapd, u8 *eid)
    * but should support open system and shared key system (WEP) by running WPA
    * dedicated for SOAP.
    */
-  if (hapd->conf->soap && (hapd->conf->wpa & (WPA_PROTO_WPA | WPA_PROTO_RSN)))
+  if (!hapd->conf->soap || !(hapd->conf->wpa & (WPA_PROTO_WPA | WPA_PROTO_RSN))) {
     return eid;
+  }
 
   /*
    * Information Element (octets)
