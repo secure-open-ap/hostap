@@ -2572,6 +2572,17 @@ static const struct wpa_dbus_property_desc wpas_dbus_bss_properties[] = {
 	  NULL,
 	  NULL
 	},
+#ifdef CONFIG_SOAP
+	/* TODO: Currently, SOAP is boolean (support or not)
+	 * SOAP with open system, need to be similar with
+	  * something like WPA, RSN
+	*/
+	{ "SOAP", WPAS_DBUS_NEW_IFACE_BSS, "y"
+	  wpas_dbus_getter_bss_soap,
+		NULL,
+		NULL
+	},
+#endif
 	{ NULL, NULL, NULL, NULL, NULL, NULL }
 };
 
