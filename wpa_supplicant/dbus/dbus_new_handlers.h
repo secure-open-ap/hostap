@@ -177,7 +177,7 @@ DECLARE_ACCESSOR(wpas_dbus_getter_network_properties);
 DECLARE_ACCESSOR(wpas_dbus_setter_network_properties);
 #ifdef CONFIG_SOAP
 DECLARE_ACCESSOR(wpas_dbus_getter_bss_soap);
-#endif
+#endif /* CONFIG_SOAP */
 
 DBusMessage * wpas_dbus_handler_wps_start(DBusMessage *message,
 					  struct wpa_supplicant *wpa_s);

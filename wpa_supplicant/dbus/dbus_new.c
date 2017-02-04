@@ -2582,7 +2582,7 @@ static const struct wpa_dbus_property_desc wpas_dbus_bss_properties[] = {
 		NULL,
 		NULL
 	},
-#endif
+#endif /* CONFIG_SOAP */
 	{ NULL, NULL, NULL, NULL, NULL, NULL }
 };
 

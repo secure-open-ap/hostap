@@ -23,8 +23,7 @@
 
 #ifdef CONFIG_SOAP
 #include "crypto/dh_groups.h"
-#endif
-
+#endif /* CONFIG_SOAP */
 
 #ifndef CONFIG_NO_RADIUS
 #ifdef EAP_SERVER

@@ -4037,7 +4037,7 @@ dbus_bool_t wpas_dbus_getter_bss_soap(
 	return wpas_dbus_simple_property_getter(iter, DBUS_TYPE_BYTE,
 						      &soap_data, error);
 }
-#endif
+#endif /* CONFIG_SOAP */
 
 
 /**

@@ -10,4 +10,4 @@
 int wpa_parse_soap_ie(const u8 *wpa_ie, size_t wpa_ie_len,
 		     char *data);
 
-#endif /* CONFIG_SOAP */
+#endif /* SOAP_H */
