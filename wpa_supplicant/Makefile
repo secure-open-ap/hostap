@@ -1670,6 +1670,11 @@ OBJS_t2 += $(FST_OBJS)
 OBJS_nfc += $(FST_OBJS)
 endif
 
+ifdef CONFIG_SOAP
+CFLAGS += -DCONFIG_SOAP
+OBJS += ../src/rsn_supp/soap.o
+endif
+
 ifndef LDO
 LDO=$(CC)
 endif
