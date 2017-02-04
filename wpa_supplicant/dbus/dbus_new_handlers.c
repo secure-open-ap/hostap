@@ -28,6 +28,9 @@
 #include "dbus_dict_helpers.h"
 #include "dbus_common_i.h"
 #include "drivers/driver.h"
+#ifdef CONFIG_SOAP
+#include "rsn_supp/soap.h"
+#endif /* CONFIG_SOAP */
 
 static const char * const debug_strings[] = {
 	"excessive", "msgdump", "debug", "info", "warning", "error", NULL
@@ -4009,6 +4012,32 @@ dbus_bool_t wpas_dbus_getter_bss_rsn(
 
 	return wpas_dbus_get_bss_security_prop(property_desc, iter, &wpa_data, error);
 }
+
+#ifdef CONFIG_SOAP
+dbus_bool_t wpas_dbus_getter_bss_soap(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
+{
+	struct bss_handler_args *args = user_data;
+	struct wpa_bss *res;
+	char soap_data = 0;
+	const u8 *ie;
+
+	res = get_bss_helper(args, error, __func__);
+	if (!res)
+		return FALSE;
+
+	ie = wpa_bss_get_ie(res, WLAN_EID_SOAP);
+	if (ie && wpa_parse_soap_ie(ie, 2 + ie[1], &soap_data) < 0) {
+		dbus_set_error_const(error, DBUS_ERROR_FAILED,
+						 "failed to parse SOAP IE");
+		return FALSE;
+	}
+
+	return wpas_dbus_simple_property_getter(iter, DBUS_TYPE_BYTE,
+						      &soap_data, error);
+}
+#endif
 
 
 /**
