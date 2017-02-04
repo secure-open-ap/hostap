@@ -7,6 +7,7 @@
 #include "includes.h"
 
 #include "common.h"
+#include "common/ieee802_11_defs.h"
 #include "ap/hostapd.h"
 
 #include "soap.h"

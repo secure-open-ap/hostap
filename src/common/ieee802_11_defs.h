@@ -303,6 +303,9 @@
 #define WLAN_EID_DILS 241
 #define WLAN_EID_FRAGMENT 242
 #define WLAN_EID_EXTENSION 255
+#ifdef CONFIG_SOAP
+#define WLAN_EID_SOAP 255
+#endif
 
 /* Element ID Extension (EID 255) values */
 #define WLAN_EID_EXT_ASSOC_DELAY_INFO 1
