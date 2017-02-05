@@ -2069,6 +2069,11 @@ void wpas_dbus_bss_signal_prop_changed(struct wpa_supplicant *wpa_s,
 	case WPAS_DBUS_BSS_PROP_AGE:
 		prop = "Age";
 		break;
+#ifdef CONFIG_SOAP
+	case WPAS_DBUS_BSS_PROP_SOAP:
+		prop = "SOAP";
+		break;
+#endif /* CONFIG_SOAP */
 	default:
 		wpa_printf(MSG_ERROR, "dbus: %s: Unknown Property value %d",
 			   __func__, property);
