@@ -559,7 +559,7 @@ static u32 wpa_bss_compare_res(const struct wpa_bss *old,
 
 #ifdef CONFIG_SOAP
 	if (!are_ies_equal(old, new_res, WLAN_EID_SOAP))
-		changes | = WPA_BSS_SOAPIE_CHANGED_FLAG;
+		changes |= WPA_BSS_SOAPIE_CHANGED_FLAG;
 #endif /* CONFIG_SOAP */
 
 	return changes;
