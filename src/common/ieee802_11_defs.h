@@ -304,7 +304,7 @@
 #define WLAN_EID_FRAGMENT 242
 #define WLAN_EID_EXTENSION 255
 #ifdef CONFIG_SOAP
-#define WLAN_EID_SOAP 255
+#define WLAN_EID_SOAP 251
 #endif /* CONFIG_SOAP */
 
 /* Element ID Extension (EID 255) values */
