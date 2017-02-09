@@ -597,7 +597,7 @@ static void notify_bss_changes(struct wpa_supplicant *wpa_s, u32 changes,
 		wpas_notify_bss_rates_changed(wpa_s, bss->id);
 
 #ifdef CONFIG_SOAP
-	if (changes * WPA_BSS_SOAPIE_CHANGED_FLAG)
+	if (changes & WPA_BSS_SOAPIE_CHANGED_FLAG)
 		wpas_notify_bss_soapie_changed(wpa_s, bss->id);
 #endif /* CONFIG_SOAP */
 
