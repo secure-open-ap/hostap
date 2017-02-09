@@ -2582,7 +2582,7 @@ static const struct wpa_dbus_property_desc wpas_dbus_bss_properties[] = {
 	 * SOAP with open system, need to be similar with
 	  * something like WPA, RSN
 	*/
-	{ "SOAP", WPAS_DBUS_NEW_IFACE_BSS, "y",
+	{ "SOAP", WPAS_DBUS_NEW_IFACE_BSS, "n",
 	  wpas_dbus_getter_bss_soap,
 		NULL,
 		NULL
