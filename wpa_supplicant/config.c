@@ -2070,7 +2070,7 @@ static const struct parse_data ssid_fields[] = {
 	{ INT_RANGE(pbss, 0, 2) },
 	{ INT_RANGE(wps_disabled, 0, 1) },
 #ifdef CONFIG_SOAP
-	{ INT(soap) },
+	{ INT_RANGE(soap, 0, 1) },
 #endif /* CONFIG_SOAP */
 };
 
