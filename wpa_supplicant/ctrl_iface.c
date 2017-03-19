@@ -2574,6 +2574,19 @@ static int wpa_supplicant_ctrl_iface_scan_result(
 		pos = wpa_supplicant_ie_txt(pos, end, mesh ? "RSN" : "WPA2",
 					    ie2, 2 + ie2[1]);
 	}
+#ifdef CONFIG_SOAP
+	soap_ie = wpa_bss_get_ie(bss, WLAN_EID_SOAP);
+	/*
+	 * NOTE: soap_ie[2] checks simple Boolean TRUE or FALSE (WPA/WPA2-PSK case)
+	 * soap_ie[1] checks a length of SOAP IE (OSA case)
+	 */
+	if (soap_ie && (soap_ie[2] || soap_ie[1] > 1)) {
+		ret = os_snprintf(pos, end - pos, "[SOAP]");
+		if (os_snprintf_error(end - pos, ret))
+			return -1;
+		pos += ret;
+	}
+#endif /* CONFIG_SOAP */
 	osen_ie = wpa_bss_get_vendor_ie(bss, OSEN_IE_VENDOR_TYPE);
 	if (osen_ie)
 		pos = wpa_supplicant_ie_txt(pos, end, "OSEN",
