@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 make &&
-sudo service network-manager stop &&
-sudo pkill wpa_supplicant &&
-sudo cp wpa_supplicant /sbin/wpa_supplicant
+sudo cp wpa_supplicant /usr/local/sbin/wpa_supplicant
+sudo cp wpa_supplicant_soap.service /lib/systemd/system/
 if [ "$?" -ne "0" ]; then
   exit 1;
 fi
@@ -12,5 +11,4 @@ echo "" | sudo tee /var/log/syslog
   exit 1;
   fi
 fi
-sudo service network-manager start
 
