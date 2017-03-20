@@ -2548,6 +2548,9 @@ static int wpa_supplicant_ctrl_iface_scan_result(
 	char *pos, *end;
 	int ret;
 	const u8 *ie, *ie2, *osen_ie, *p2p, *mesh;
+#ifdef CONFIG_SOAP
+	const u8 *soap_ie;
+#endif /* CONFIG_SOAP */
 
 	mesh = wpa_bss_get_ie(bss, WLAN_EID_MESH_ID);
 	p2p = wpa_bss_get_vendor_ie(bss, P2P_IE_VENDOR_TYPE);
