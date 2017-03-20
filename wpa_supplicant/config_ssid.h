@@ -764,6 +764,10 @@ struct wpa_ssid {
 	 * 1 = WPS disabled
 	 */
 	int wps_disabled;
+	
+#ifdef CONFIG_SOAP
+	int soap;
+#endif /* CONFIG_SOAP */
 };
 
 #endif /* CONFIG_SSID_H */
