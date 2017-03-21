@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 make &&
-sudo cp wpa_supplicant /usr/local/sbin/wpa_supplicant
+sudo cp wpa_supplicant wpa_cli /usr/local/sbin/
 sudo cp wpa_supplicant_soap.service /lib/systemd/system/
 if [ "$?" -ne "0" ]; then
   exit 1;
