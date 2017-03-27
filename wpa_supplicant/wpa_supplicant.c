@@ -1339,6 +1339,12 @@ int wpa_supplicant_set_suites(struct wpa_supplicant *wpa_s,
 	if (wpa_key_mgmt_wpa_psk(ssid->key_mgmt)) {
 		int psk_set = 0;
 
+#ifdef CONFIG_SOAP
+		if (ssid->soap) {
+			wpa_s->soap = ssid->soap;
+			return 0;
+		}
+#endif /* CONFIG_SOAP */
 		if (ssid->psk_set) {
 			wpa_sm_set_pmk(wpa_s->wpa, ssid->psk, PMK_LEN, NULL,
 				       NULL);
@@ -1422,11 +1428,6 @@ int wpa_supplicant_set_suites(struct wpa_supplicant *wpa_s,
 #endif /* CONFIG_EXT_PASSWORD */
 
 		if (!psk_set) {
-#ifdef CONFIG_SOAP
-			if (ssid->soap) {
-				return 0;
-			}
-#endif /* CONFIG_SOAP */
 			wpa_msg(wpa_s, MSG_INFO,
 				"No PSK available for association");
 			return -1;
