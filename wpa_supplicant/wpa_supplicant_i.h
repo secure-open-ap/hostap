@@ -1069,6 +1069,10 @@ struct wpa_supplicant {
 	 */
 	struct wpabuf *lci;
 	struct os_reltime lci_time;
+	
+#ifdef CONFIG_SOAP
+	int soap;
+#endif /* CONFIG_SOAP */
 };
 
 
