@@ -1224,6 +1224,11 @@ struct wpa_bss * wpa_supplicant_pick_network(struct wpa_supplicant *wpa_s,
 	}
 
 	ssid = *selected_ssid;
+#ifdef CONFIG_SOAP
+	if (selected && ssid && ssid->soap) {
+		return selected;
+	}
+#endif /* CONFIG_SOAP */
 	if (selected && ssid && ssid->mem_only_psk && !ssid->psk_set &&
 	    !ssid->passphrase && !ssid->ext_psk) {
 		const char *field_name, *txt = NULL;

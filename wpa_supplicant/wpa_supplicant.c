@@ -5971,6 +5971,11 @@ int wpas_network_disabled(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid)
 		return 1; /* invalid WEP key */
 	}
 
+#ifdef CONFIG_SOAP
+	if (ssid->soap) {
+		return 0;
+	}
+#endif /* CONFIG_SOAP */
 	if (wpa_key_mgmt_wpa_psk(ssid->key_mgmt) && !ssid->psk_set &&
 	    (!ssid->passphrase || ssid->ssid_len != 0) && !ssid->ext_psk &&
 	    !ssid->mem_only_psk)
