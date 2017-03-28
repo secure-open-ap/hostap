@@ -29,6 +29,10 @@
 #include "sme.h"
 #include "hs20_supplicant.h"
 
+#ifdef CONFIG_SOAP
+#include "rsn_supp/soap.h"
+#endif /* CONFIG_SOAP */
+
 #define SME_AUTH_TIMEOUT 5
 #define SME_ASSOC_TIMEOUT 5
 
@@ -1029,6 +1033,29 @@ void sme_associate(struct wpa_supplicant *wpa_s, enum wpas_mode mode,
 		params.fils_nonces_len = sizeof(nonces);
 	}
 #endif /* CONFIG_FILS */
+
+#ifdef CONFIG_SOAP
+		if (wpa_s->soap) {
+			struct wpabuf *buf;
+
+			buf = soap_build_assoc_req(wpa_s->soap);
+			if (!buf) {
+				return;
+			}
+			if (wpa_s->sme.assoc_req_ie_len + wpabuf_len(buf) >
+			    sizeof(wpa_s->sme.assoc_req_ie)) {
+				wpa_printf(MSG_ERROR,
+					   "SOAP: Not enough buffer room for SOAP element");
+				wpabuf_free(buf);
+				return;
+			}
+			os_memcpy(wpa_s->sme.assoc_req_ie + wpa_s->sme.assoc_req_ie_len,
+				  wpabuf_head(buf), wpabuf_len(buf));
+			wpa_s->sme.assoc_req_ie_len += wpabuf_len(buf);
+			wpabuf_free(buf);
+
+		}
+#endif /* CONFIG_SOAP */
 
 	params.bssid = bssid;
 	params.ssid = wpa_s->sme.ssid;

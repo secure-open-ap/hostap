@@ -20,3 +20,25 @@ int wpa_parse_soap_ie(const u8 *wpa_ie, size_t wpa_ie_len,
 		*data = wpa_ie[2];
 	return 0;
 }
+
+struct wpabuf * soap_build_assoc_req(int soap)
+{
+  struct wpabuf *buf;
+
+  if (!soap) {
+    return NULL;
+  }
+
+  buf = wpabuf_alloc(3);
+  if (!buf) {
+    return NULL;
+  }
+
+  wpabuf_put_u8(buf, WLAN_EID_SOAP); /* Element ID */
+  wpabuf_put_u8(buf, 1); /* Length */
+  wpabuf_put_u8(buf, soap);
+
+  wpa_hexdump_buf(MSG_DEBUG, "SOAP: Association Request plaintext", buf);
+
+  return buf;
+}
