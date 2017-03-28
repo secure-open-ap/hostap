@@ -907,10 +907,6 @@ struct wpa_driver_associate_params {
 	 * fils_nonces_len: Length of fils_nonce in bytes
 	 */
 	size_t fils_nonces_len;
-	
-#ifdef CONFIG_SOAP
-	int soap;
-#endif /* CONFIG_SOAP */
 };
 
 enum hide_ssid {
