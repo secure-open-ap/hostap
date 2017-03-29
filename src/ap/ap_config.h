@@ -335,7 +335,7 @@ struct hostapd_bss_config {
 
 #ifdef CONFIG_SOAP
 	int soap; /* use SOAP */
-	struct dh_group *soap_dh_group; /* exponent of Mersenne prime p */
+	const struct dh_group *soap_dh_group; /* exponent of Mersenne prime p */
 #endif /* CONFIG_SOAP */
 
 #ifdef CONFIG_IEEE80211R_AP
