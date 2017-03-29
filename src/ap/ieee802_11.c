@@ -1955,6 +1955,12 @@ static u16 check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
 #ifdef CONFIG_SOAP
 	if (hapd->conf->soap && elems.soap_ie) {
 		/*
+		 * TODO: Currently, SOAP is a simple Boolean TRUE or FALSE
+		 */
+		if (elems.soap_ie[0]) {
+			sta->soap = elems.soap_ie[0];
+		}
+		/*
 		 * TODO: initialize SOAP state machine
 		 */
 		wpa_msg(hapd->msg_ctx, MSG_WARNING, "TODO: need to implement SOAP state machine");
