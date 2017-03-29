@@ -562,6 +562,15 @@ LIBS += -ldl
 endif
 endif
 
+ifdef CONFIG_SOAP
+CFLAGS += -DCONFIG_SOAP
+NEED_ECC=y
+NEED_DH_GROUPS=y
+OBJS += ../src/ap/soap.o
+OBJS += ../src/ap/wpa_soap.o
+OBJS += ../src/ap/wpa_soap_glue.o
+endif
+
 # Basic EAP functionality is needed for EAPOL
 OBJS += eap_register.o
 OBJS += ../src/eap_server/eap_server.o
@@ -1024,12 +1033,6 @@ endif
 ifndef CONFIG_NO_CTRL_IFACE
 OBJS += ../src/fst/fst_ctrl_iface.o
 endif
-endif
-
-ifdef CONFIG_SOAP
-CFLAGS += -DCONFIG_SOAP
-OBJS += ../src/crypto/dh_groups.o
-OBJS += ../src/ap/soap.o
 endif
 
 ALL=hostapd hostapd_cli

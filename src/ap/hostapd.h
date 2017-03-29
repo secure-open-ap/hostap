@@ -305,6 +305,10 @@ struct hostapd_data {
 	u8 range_req_token;
 	unsigned int lci_req_active:1;
 	unsigned int range_req_active:1;
+
+#ifdef CONFIG_SOAP
+	struct wpa_soap_agent *wpa_soap;
+#endif /* CONFIG_SOAP */
 };
 
 
