@@ -1952,6 +1952,15 @@ static u16 check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
 		return WLAN_STATUS_INVALID_IE;
 	}
 
+#ifdef CONFIG_SOAP
+	if (hapd->conf->soap && elems.soap_ie) {
+		/*
+		 * TODO: initialize SOAP state machine
+		 */
+		wpa_printf(MSG_WARNING, "TODO: need to implement SOAP state machine")
+	}
+#endif /* CONFIG_SOAP */
+
 	if (hapd->conf->wpa && wpa_ie) {
 		int res;
 		wpa_ie -= 2;

@@ -492,6 +492,16 @@ ParseRes ieee802_11_parse_elems(const u8 *start, size_t len,
 						       show_errors))
 				unknown++;
 			break;
+#ifdef CONFIG_SOAP
+		case WLAN_EID_SOAP:
+			if (elen < 1)
+				break;
+			elems->soap_ie = pos;
+			elems->soap_len = elen;
+			wpa_hexdump(MSG_DEBUG, "SOAP IE",
+				    elems->soap, elems->soap_len);
+			break;
+#endif /* CONFIG_SOAP */
 		default:
 			unknown++;
 			if (!show_errors)
