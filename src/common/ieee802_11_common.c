@@ -499,7 +499,7 @@ ParseRes ieee802_11_parse_elems(const u8 *start, size_t len,
 			elems->soap_ie = pos;
 			elems->soap_len = elen;
 			wpa_hexdump(MSG_DEBUG, "SOAP IE",
-				    elems->soap, elems->soap_len);
+				elems->soap_ie, elems->soap_len);
 			break;
 #endif /* CONFIG_SOAP */
 		default:

@@ -1957,7 +1957,7 @@ static u16 check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
 		/*
 		 * TODO: initialize SOAP state machine
 		 */
-		wpa_printf(MSG_WARNING, "TODO: need to implement SOAP state machine")
+		wpa_msg(hapd->msg_ctx, MSG_WARNING, "TODO: need to implement SOAP state machine");
 	}
 #endif /* CONFIG_SOAP */
 
