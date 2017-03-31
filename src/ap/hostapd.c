@@ -47,6 +47,7 @@
 #include "rrm.h"
 
 #ifdef CONFIG_SOAP
+#include "wpa_soap.h"
 #include "wpa_soap_glue.h"
 #endif /* CONFIG_SOAP */
 
@@ -2831,6 +2832,15 @@ void hostapd_new_assoc_sta(struct hostapd_data *hapd, struct sta_info *sta,
 		os_get_reltime(&sta->connected_time);
 		accounting_sta_start(hapd, sta);
 	}
+
+#ifdef CONFIG_SOAP
+	if (sta->soap) {
+		/*
+		 * TODO: SOAP state machine
+		 */
+		wpa_soap_sta_associated(hapd->wpa_soap, sta->soap_sm);
+	}
+#endif /* CONFIG_SOAP */
 
 	/* Start IEEE 802.1X authentication process for new stations */
 	ieee802_1x_new_station(hapd, sta);

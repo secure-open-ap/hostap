@@ -46,6 +46,10 @@
 #include "rrm.h"
 #include "taxonomy.h"
 
+#ifdef CONFIG_SOAP
+#include "wpa_soap.h"
+#endif /* CONFIG_SOAP */
+
 
 u8 * hostapd_eid_supp_rates(struct hostapd_data *hapd, u8 *eid)
 {
@@ -1960,10 +1964,14 @@ static u16 check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
 		if (elems.soap_ie[0]) {
 			sta->soap = elems.soap_ie[0];
 		}
-		/*
-		 * TODO: initialize SOAP state machine
-		 */
-		wpa_msg(hapd->msg_ctx, MSG_WARNING, "TODO: need to implement SOAP state machine");
+
+		if (sta->soap_sm == NULL)
+			sta->soap_sm = wpa_soap_sta_init(hapd->wpa_soap, sta->addr);
+		if (sta->soap_sm == NULL) {
+			wpa_printf(MSG_WARNING, "Failed to initialize SOAP "
+				   "state machine");
+			return WLAN_STATUS_UNSPECIFIED_FAILURE;
+		}
 	}
 #endif /* CONFIG_SOAP */
 

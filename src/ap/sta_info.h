@@ -228,6 +228,7 @@ struct sta_info {
 
 #ifdef CONFIG_SOAP
 	u8 soap;
+	struct soap_state_machine *soap_sm;
 #endif /* CONFIG_SOAP */
 };
 
