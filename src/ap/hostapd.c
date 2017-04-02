@@ -2838,8 +2838,13 @@ void hostapd_new_assoc_sta(struct hostapd_data *hapd, struct sta_info *sta,
 		/*
 		 * TODO: SOAP state machine
 		 */
+		/*
+		 * NOTE
+		 * WPA_AUTH between else { ... } block should be called
+		 * after SOAP handshake finished
+		 */
 		wpa_soap_sta_associated(hapd->wpa_soap, sta->soap_sm);
-	}
+	} else {
 #endif /* CONFIG_SOAP */
 
 	/* Start IEEE 802.1X authentication process for new stations */
@@ -2850,6 +2855,10 @@ void hostapd_new_assoc_sta(struct hostapd_data *hapd, struct sta_info *sta,
 			wpa_auth_sm_event(sta->wpa_sm, WPA_REAUTH);
 	} else
 		wpa_auth_sta_associated(hapd->wpa_auth, sta->wpa_sm);
+
+#ifdef CONFIG_SOAP
+	} /* if (sta->soap) {} else { ... }*/
+#endif /* CONFIG_SOAP */
 
 	if (!(hapd->iface->drv_flags & WPA_DRIVER_FLAGS_INACTIVITY_TIMER)) {
 		wpa_printf(MSG_DEBUG,
