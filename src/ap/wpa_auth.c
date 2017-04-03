@@ -66,6 +66,10 @@ static const u32 eapol_key_timeout_first = 100; /* ms */
 static const u32 eapol_key_timeout_subseq = 1000; /* ms */
 static const u32 eapol_key_timeout_first_group = 500; /* ms */
 
+#ifdef CONFIG_SOAP
+static const u32 SOAPConfigUpdateCount = 4;
+#endif /* CONFIG_SOAP */
+
 /* TODO: make these configurable */
 static const int dot11RSNAConfigPMKLifetime = 43200;
 static const int dot11RSNAConfigPMKReauthThreshold = 70;
@@ -3173,40 +3177,69 @@ SM_STEP(WPA_PTK_GROUP)
  */
 SM_STATE(WPA_SOAP, INITIALIZE)
 {
-  SM_ENTRY_MA(WPA_SOAP, INITIALIZE, wpa_soap)
-  if (sm->Init) {
-    u8 _rand[20];
-		/* Init flag is not cleared here, so avoid busy
-		 * loop by claiming nothing changed. */
-    sm->changed = FALSE;
-    struct crypto_ec *e = sm->wpa_soap->e;
-    if (crypto_get_random(_rand, crypto_ec_prime_len(e)) < 0) {
-      /*
-       * TODO: error handling
-       */
-    }
-    sm->wpa_soap->b = crypto_bignum_init_set(_rand, crypto_ec_prime_len(e));
-    if (sm->wpa_soap->b == NULL) {
-      /*
-       * TODO: error handling
-       */
-    }
-    if (crypto_ec_point_mul(e, sm->wpa_soap->g, sm->wpa_soap->b,
-          sm->wpa_soap->q)) {
-      /*
-       * TODO: error handling
-       */
-    }
+	u8 _rand[20];
+  SM_ENTRY_MA(WPA_SOAP, INITIALIZE, wpa_soap);
+  struct crypto_ec *e = sm->wpa_soap->e;
+  if (crypto_get_random(_rand, crypto_ec_prime_len(e)) < 0) {
     /*
-     * TODO: Send SoapM1
+     * TODO: error handling
      */
   }
+  sm->wpa_soap->b = crypto_bignum_init_set(_rand, crypto_ec_prime_len(e));
+  if (sm->wpa_soap->b == NULL) {
+    /*
+     * TODO: error handling
+     */
+  }
+  if (crypto_ec_point_mul(e, sm->wpa_soap->g, sm->wpa_soap->b,
+        sm->wpa_soap->q)) {
+    /*
+     * TODO: error handling
+     */
+  }
+  /*
+   * TODO: Send SoapM1
+   */
+}
+
+SM_STATE(WPA_SOAP, SENDSOAPM1)
+{
+	SM_ENTRY_MA(WPA_SOAP, SENDSOAPM1, wpa_soap);
+}
+
+SM_STATE(WPA_SOAP, DERIVEPSK)
+{
+	SM_ENTRY_MA(WPA_SOAP, SENDSOAPM1, wpa_soap);
+}
+
+SM_STATE(WPA_SOAP, DONE)
+{
+	SM_ENTRY_MA(WPA_SOAP, DONE, wpa_soap);
 }
 
 SM_STEP(WPA_SOAP)
 {
 	if (sm->Init)
 		SM_ENTER(WPA_SOAP, INITIALIZE);
+	else switch (sm->wpa_soap_state) {
+		case WPA_SOAP_INITIALIZE:
+			SM_ENTER(WPA_SOAP, SENDSOAPM1);
+			break;
+		case WPA_SOAP_SENDSOAPM1:
+			if (sm->SOAPKeyReceived)
+				SM_ENTER(WPA_SOAP, DERIVEPSK);
+			else if (sm->TimeoutCtr > (int) SOAPConfigUpdateCount) {
+				/*
+				 * TODO: disconnect
+				 */
+			} else if (sm->TimeoutEvt)
+				SM_ENTER(WPA_SOAP, SENDSOAPM1);
+			break;
+		case WPA_SOAP_DERIVEPSK:
+			break;
+		case WPA_SOAP_DONE:
+			break;
+	}
 }
 #endif /* CONFIG_SOAP */
 

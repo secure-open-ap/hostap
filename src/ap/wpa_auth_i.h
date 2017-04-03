@@ -51,7 +51,7 @@ struct wpa_state_machine {
 
 #ifdef CONFIG_SOAP
 	enum {
-		WPA_SOAP_INITIALIZE, WPA_SOAP_M1, WPA_SOAP_M2,
+		WPA_SOAP_INITIALIZE, WPA_SOAP_SENDSOAPM1, WPA_SOAP_DERIVEPSK,
 		WPA_SOAP_DONE
 	} wpa_soap_state;
 #endif /* CONFIG_SOAP */
@@ -89,6 +89,9 @@ struct wpa_state_machine {
 	Boolean PTKRequest; /* not in IEEE 802.11i state machine */
 	Boolean has_GTK;
 	Boolean PtkGroupInit; /* init request for PTK Group state machine */
+#ifdef CONFIG_SOAP
+	Boolean SOAPKeyReceived;
+#endif /* CONFIG_SOAP */
 
 	u8 *last_rx_eapol_key; /* starting from IEEE 802.1X header */
 	size_t last_rx_eapol_key_len;
