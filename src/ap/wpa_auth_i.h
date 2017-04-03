@@ -13,6 +13,9 @@
 #define RSNA_MAX_EAPOL_RETRIES 4
 
 struct wpa_group;
+#ifdef CONFIG_SOAP
+#include "wpa_soap_i.h"
+#endif /* CONFIG_SOAP */
 
 struct wpa_stsl_negotiation {
 	struct wpa_stsl_negotiation *next;
@@ -24,6 +27,9 @@ struct wpa_stsl_negotiation {
 struct wpa_state_machine {
 	struct wpa_authenticator *wpa_auth;
 	struct wpa_group *group;
+#ifdef CONFIG_SOAP
+	struct wpa_soap *wpa_soap;
+#endif /* CONFIG_SOAP */
 
 	u8 addr[ETH_ALEN];
 	u8 p2p_dev_addr[ETH_ALEN];
@@ -42,6 +48,13 @@ struct wpa_state_machine {
 		WPA_PTK_GROUP_REKEYESTABLISHED,
 		WPA_PTK_GROUP_KEYERROR
 	} wpa_ptk_group_state;
+
+#ifdef CONFIG_SOAP
+	enum {
+		WPA_SOAP_INITIALIZE, WPA_SOAP_M1, WPA_SOAP_M2,
+		WPA_SOAP_DONE
+	} wpa_soap_state;
+#endif /* CONFIG_SOAP */
 
 	Boolean Init;
 	Boolean DeauthenticationRequest;
@@ -188,6 +201,9 @@ struct wpa_ft_pmk_cache;
 /* per authenticator data */
 struct wpa_authenticator {
 	struct wpa_group *group;
+#ifdef CONFIG_SOAP
+	struct wpa_soap *soap;
+#endif /* CONFIG_SOAP */
 
 	unsigned int dot11RSNAStatsTKIPRemoteMICFailures;
 	u32 dot11RSNAAuthenticationSuiteSelected;

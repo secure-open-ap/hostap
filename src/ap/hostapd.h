@@ -307,7 +307,7 @@ struct hostapd_data {
 	unsigned int range_req_active:1;
 
 #ifdef CONFIG_SOAP
-	struct wpa_soap_agent *wpa_soap;
+	struct wpa_soap *wpa_soap;
 #endif /* CONFIG_SOAP */
 };
 

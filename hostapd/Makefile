@@ -568,7 +568,6 @@ NEED_ECC=y
 NEED_DH_GROUPS=y
 OBJS += ../src/ap/soap.o
 OBJS += ../src/ap/wpa_soap.o
-OBJS += ../src/ap/wpa_soap_glue.o
 endif
 
 # Basic EAP functionality is needed for EAPOL

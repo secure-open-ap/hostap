@@ -27,6 +27,10 @@
 #include "wpa_auth.h"
 #include "wpa_auth_glue.h"
 
+#ifdef CONFIG_SOAP
+#include "wpa_soap.h"
+#endif /* CONFIG_SOAP */
+
 
 static void hostapd_wpa_auth_conf(struct hostapd_bss_config *conf,
 				  struct hostapd_config *iconf,
@@ -630,6 +634,14 @@ int hostapd_setup_wpa(struct hostapd_data *hapd)
 		wpa_printf(MSG_ERROR, "WPA initialization failed.");
 		return -1;
 	}
+
+#ifdef CONFIG_SOAP
+  hapd->wpa_soap = soap_init(hapd->own_addr);
+  if (hapd->wpa_soap == NULL) {
+    wpa_printf(MSG_ERROR, "SOAP initialization failed.");
+    return -1;
+  }
+#endif /* CONFIG_SOAP */
 
 	if (hostapd_set_privacy(hapd, 1)) {
 		wpa_printf(MSG_ERROR, "Could not set PrivacyInvoked "

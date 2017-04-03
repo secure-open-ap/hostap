@@ -1956,25 +1956,6 @@ static u16 check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
 		return WLAN_STATUS_INVALID_IE;
 	}
 
-#ifdef CONFIG_SOAP
-	if (hapd->conf->soap && elems.soap_ie) {
-		/*
-		 * TODO: Currently, SOAP is a simple Boolean TRUE or FALSE
-		 */
-		if (elems.soap_ie[0]) {
-			sta->soap = elems.soap_ie[0];
-		}
-
-		if (sta->soap_sm == NULL)
-			sta->soap_sm = wpa_soap_sta_init(hapd->wpa_soap, sta->addr);
-		if (sta->soap_sm == NULL) {
-			wpa_printf(MSG_WARNING, "Failed to initialize SOAP "
-				   "state machine");
-			return WLAN_STATUS_UNSPECIFIED_FAILURE;
-		}
-	}
-#endif /* CONFIG_SOAP */
-
 	if (hapd->conf->wpa && wpa_ie) {
 		int res;
 		wpa_ie -= 2;
@@ -2071,6 +2052,21 @@ static u16 check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
 			return WLAN_STATUS_CIPHER_REJECTED_PER_POLICY;
 		}
 #endif /* CONFIG_IEEE80211N */
+#ifdef CONFIG_SOAP
+		if (hapd->conf->soap && elems.soap_ie) {
+			/*
+			 * TODO: Currently, SOAP is a simple Boolean TRUE or FALSE
+			 */
+			sta->soap = 0;
+			if (elems.soap_ie[0]) {
+				sta->soap = elems.soap_ie[0];
+			}
+			if (wpa_soap_sta_init(hapd->wpa_soap, sta->addr, sta->soap)) {
+				wpa_printf(MSG_WARNING, "Failed to initialize SOAP for STA");
+				return WLAN_STATUS_UNSPECIFIED_FAILURE;
+			}
+		}
+#endif /* CONFIG_SOAP */
 #ifdef CONFIG_HS20
 	} else if (hapd->conf->osen) {
 		if (elems.osen == NULL) {

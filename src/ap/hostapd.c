@@ -46,11 +46,6 @@
 #include "neighbor_db.h"
 #include "rrm.h"
 
-#ifdef CONFIG_SOAP
-#include "wpa_soap.h"
-#include "wpa_soap_glue.h"
-#endif /* CONFIG_SOAP */
-
 
 static int hostapd_flush_old_stations(struct hostapd_data *hapd, u16 reason);
 static int hostapd_setup_encryption(char *iface, struct hostapd_data *hapd);
@@ -1078,11 +1073,6 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first)
 
 	if ((conf->wpa || conf->osen) && hostapd_setup_wpa(hapd))
 		return -1;
-
-#ifdef CONFIG_SOAP
-	if (conf->soap && hostapd_setup_soap(hapd))
-		return -1;
-#endif /* CONFIG_SOAP */
 
 	if (accounting_init(hapd)) {
 		wpa_printf(MSG_ERROR, "Accounting initialization failed.");
@@ -2833,20 +2823,6 @@ void hostapd_new_assoc_sta(struct hostapd_data *hapd, struct sta_info *sta,
 		accounting_sta_start(hapd, sta);
 	}
 
-#ifdef CONFIG_SOAP
-	if (sta->soap) {
-		/*
-		 * TODO: SOAP state machine
-		 */
-		/*
-		 * NOTE
-		 * WPA_AUTH between else { ... } block should be called
-		 * after SOAP handshake finished
-		 */
-		wpa_soap_sta_associated(hapd->wpa_soap, sta->soap_sm);
-	} else {
-#endif /* CONFIG_SOAP */
-
 	/* Start IEEE 802.1X authentication process for new stations */
 	ieee802_1x_new_station(hapd, sta);
 	if (reassoc) {
@@ -2855,10 +2831,6 @@ void hostapd_new_assoc_sta(struct hostapd_data *hapd, struct sta_info *sta,
 			wpa_auth_sm_event(sta->wpa_sm, WPA_REAUTH);
 	} else
 		wpa_auth_sta_associated(hapd->wpa_auth, sta->wpa_sm);
-
-#ifdef CONFIG_SOAP
-	} /* if (sta->soap) {} else { ... }*/
-#endif /* CONFIG_SOAP */
 
 	if (!(hapd->iface->drv_flags & WPA_DRIVER_FLAGS_INACTIVITY_TIMER)) {
 		wpa_printf(MSG_DEBUG,

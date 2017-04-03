@@ -3160,6 +3160,57 @@ SM_STEP(WPA_PTK_GROUP)
 }
 
 
+#ifdef CONFIG_SOAP
+/*
+ * NOTE
+ * SM_STEP(SOAP): defines sm_SOAP_Step(sm)
+ * SM_STEP_RUN(SOAP): calls sm_SOAP_Step(sm) (SM_STEP(SOAP))
+ *                    (execute state machine itself)
+ * SM_STATE(SOAP, STATE): defines static void sm_SOAP_STATE_Enter(sm, int)
+ * SM_ENTER: calls sm_SOAP_STATE_Enter(sm, 0)
+ * SM_ENTRY_MA(SOAP, STATE, soap): sets the current state
+ *                                 (sm->soap_state = SOAP_STATE)
+ */
+SM_STATE(WPA_SOAP, INITIALIZE)
+{
+  SM_ENTRY_MA(WPA_SOAP, INITIALIZE, wpa_soap)
+  if (sm->Init) {
+    u8 _rand[20];
+		/* Init flag is not cleared here, so avoid busy
+		 * loop by claiming nothing changed. */
+    sm->changed = FALSE;
+    struct crypto_ec *e = sm->wpa_soap->e;
+    if (crypto_get_random(_rand, crypto_ec_prime_len(e)) < 0) {
+      /*
+       * TODO: error handling
+       */
+    }
+    sm->wpa_soap->b = crypto_bignum_init_set(_rand, crypto_ec_prime_len(e));
+    if (sm->wpa_soap->b == NULL) {
+      /*
+       * TODO: error handling
+       */
+    }
+    if (crypto_ec_point_mul(e, sm->wpa_soap->g, sm->wpa_soap->b,
+          sm->wpa_soap->q)) {
+      /*
+       * TODO: error handling
+       */
+    }
+    /*
+     * TODO: Send SoapM1
+     */
+  }
+}
+
+SM_STEP(WPA_SOAP)
+{
+	if (sm->Init)
+		SM_ENTER(WPA_SOAP, INITIALIZE);
+}
+#endif /* CONFIG_SOAP */
+
+
 static int wpa_gtk_update(struct wpa_authenticator *wpa_auth,
 			  struct wpa_group *group)
 {
@@ -3479,6 +3530,11 @@ static int wpa_sm_step(struct wpa_state_machine *sm)
 		sm->changed = FALSE;
 		sm->wpa_auth->group->changed = FALSE;
 
+#ifdef CONFIG_SOAP
+		SM_STEP_RUN(WPA_SOAP);
+		if (sm->pending_deinit)
+			break;
+#endif /* CONFIG_SOAP */
 		SM_STEP_RUN(WPA_PTK);
 		if (sm->pending_deinit)
 			break;
