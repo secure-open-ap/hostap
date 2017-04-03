@@ -2053,18 +2053,18 @@ static u16 check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
 		}
 #endif /* CONFIG_IEEE80211N */
 #ifdef CONFIG_SOAP
+		sta->soap = 0;
 		if (hapd->conf->soap && elems.soap_ie) {
 			/*
 			 * TODO: Currently, SOAP is a simple Boolean TRUE or FALSE
 			 */
-			sta->soap = 0;
 			if (elems.soap_ie[0]) {
 				sta->soap = elems.soap_ie[0];
 			}
-			if (wpa_soap_sta_init(hapd->wpa_soap, sta->addr, sta->soap)) {
-				wpa_printf(MSG_WARNING, "Failed to initialize SOAP for STA");
-				return WLAN_STATUS_UNSPECIFIED_FAILURE;
-			}
+		}
+		if (wpa_soap_sta_init(hapd->wpa_soap, sta->addr, sta->soap)) {
+			wpa_printf(MSG_WARNING, "Failed to initialize SOAP for STA");
+			return WLAN_STATUS_UNSPECIFIED_FAILURE;
 		}
 #endif /* CONFIG_SOAP */
 #ifdef CONFIG_HS20
