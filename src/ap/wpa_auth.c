@@ -645,6 +645,13 @@ int wpa_auth_sta_associated(struct wpa_authenticator *wpa_auth,
 	if (wpa_sm_step(sm) == 1)
 		return 1; /* should not really happen */
 	sm->Init = FALSE;
+#ifdef CONFIG_SOAP
+	/*
+	 * Skip sm->AuthenticationRequest if STA wants to use SOAP
+	 * it is done after SOAP Handshake finishes
+	 */
+  if (!sm->wpa_soap->sta_use_soap)
+#endif /* CONFIG_SOAP */
 	sm->AuthenticationRequest = TRUE;
 	return wpa_sm_step(sm);
 }
@@ -3236,6 +3243,7 @@ SM_STEP(WPA_SOAP)
 				SM_ENTER(WPA_SOAP, SENDSOAPM1);
 			break;
 		case WPA_SOAP_DERIVEPSK:
+			SM_ENTER(WPA_SOAP, DONE);
 			break;
 		case WPA_SOAP_DONE:
 			break;
