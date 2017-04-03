@@ -12,6 +12,9 @@
 #include "crypto/dh_groups.h"
 #include "crypto/crypto.h"
 
+#include "wpa_auth.h"
+#include "wpa_auth_i.h"
+
 #include "wpa_soap.h"
 #include "wpa_soap_i.h"
 
@@ -54,7 +57,7 @@ free_wpa_soap:
   return NULL;
 }
 
-int wpa_soap_sta_init(struct wpa_soap *wpa_soap,
+int wpa_soap_sta_init(struct wpa_state_machine *sm, struct wpa_soap *wpa_soap,
       const u8 *addr, int sta_use_soap)
 {
 
@@ -62,6 +65,7 @@ int wpa_soap_sta_init(struct wpa_soap *wpa_soap,
    * TODO: edit in wpa_state_machine
    */
   wpa_soap->sta_use_soap = sta_use_soap;
+  sm->wpa_soap = wpa_soap;
   if (!sta_use_soap) {
     return 0;
   }

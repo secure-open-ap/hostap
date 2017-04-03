@@ -2062,7 +2062,7 @@ static u16 check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
 				sta->soap = elems.soap_ie[0];
 			}
 		}
-		if (wpa_soap_sta_init(hapd->wpa_soap, sta->addr, sta->soap)) {
+		if (wpa_soap_sta_init(sta->wpa_sm, hapd->wpa_soap, sta->addr, sta->soap)) {
 			wpa_printf(MSG_WARNING, "Failed to initialize SOAP for STA");
 			return WLAN_STATUS_UNSPECIFIED_FAILURE;
 		}
