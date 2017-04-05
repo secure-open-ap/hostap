@@ -3410,6 +3410,19 @@ void wpa_supplicant_rx_eapol(void *ctx, const u8 *src_addr,
 {
 	struct wpa_supplicant *wpa_s = ctx;
 
+#ifdef CONFIG_SOAP
+	if (len > 2 && buf[0] == 0xff && buf[1] == 0xff) {
+		/*
+		 * NOTE: Currently we are using reserved values of EAPOL PDU
+		 */
+		/*
+		 * TODO: Handle SOAP-Key Message 1
+		 */
+		wpa_dbg(wpa_s, MSG_DEBUG, "RX SOAP from " MACSTR, MAC2STR(src_addr));
+		return;
+	}
+#endif /* CONFIG_SOAP */
+
 	wpa_dbg(wpa_s, MSG_DEBUG, "RX EAPOL from " MACSTR, MAC2STR(src_addr));
 	wpa_hexdump(MSG_MSGDUMP, "RX EAPOL", buf, len);
 
