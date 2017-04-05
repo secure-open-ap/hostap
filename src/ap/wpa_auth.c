@@ -3202,7 +3202,7 @@ void __wpa_send_soap(struct wpa_soap *wpa_soap,
 
 	wpa_printf(MSG_DEBUG, "SOAP: Send SOAP(version=%d encr=%d)", 0xff, encr);
 
-	len = sizeof(struct ieee802_1x_hdr) + 2 + q_len;
+	len = sizeof(struct ieee802_1x_hdr) + 3 + q_len;
 	hdr = os_zalloc(len);
 	if (hdr == NULL)
 		return;
@@ -3213,8 +3213,9 @@ void __wpa_send_soap(struct wpa_soap *wpa_soap,
 	hdr->type = 0xff;
 	hdr->length = host_to_be16(len  - sizeof(*hdr));
 	payload = (u8*)(hdr + sizeof(*hdr));
-	WPA_PUT_BE16(payload, q_len);
-	os_memcpy(payload + 2, q, q_len);
+	payload[0] = (u8)(ec_group & 0xff);
+	WPA_PUT_BE16(payload + 1, q_len);
+	os_memcpy(payload + 3, q, q_len);
 
 	wpa_soap_send_soap(wpa_soap, sm->addr, (u8 *) hdr, len, encr);
 	os_free(hdr);
