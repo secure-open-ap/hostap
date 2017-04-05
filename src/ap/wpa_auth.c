@@ -3329,8 +3329,9 @@ SM_STEP(WPA_SOAP)
 				SM_ENTER(WPA_SOAP, DERIVEPSK);
 			else if (sm->TimeoutCtr > (int) dot11RSNAConfigPairwiseUpdateCount) {
 				/*
-				 * TODO: disconnect
+				 * NOTE: WPA_PTK sm seems to re-initialize itself
 				 */
+				SM_ENTER(WPA_SOAP, INITIALIZE);
 			} else if (sm->TimeoutEvt)
 				SM_ENTER(WPA_SOAP, SENDSOAPM1);
 			break;
