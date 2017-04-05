@@ -15,6 +15,8 @@ struct wpa_soap {
   struct crypto_bignum *b;
   struct crypto_ec_point *q;
 
+  struct wpa_soap_callbacks cb;
+
   u8 addr[ETH_ALEN];
 };
 

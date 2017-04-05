@@ -2369,6 +2369,12 @@ struct wpa_driver_ops {
 			       size_t data_len, int encrypt,
 			       const u8 *own_addr, u32 flags);
 
+#ifdef CONFIG_SOAP
+	int (*hapd_send_soap)(void *priv, const u8 *addr, const u8 *data,
+			       size_t data_len, int encrypt,
+			       const u8 *own_addr, u32 flags);
+#endif /* CONFIG_SOAP */
+
 	/**
 	 * sta_deauth - Deauthenticate a station (AP only)
 	 * @priv: Private driver interface data

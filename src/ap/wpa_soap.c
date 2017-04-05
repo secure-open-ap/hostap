@@ -18,13 +18,15 @@
 #include "wpa_soap.h"
 #include "wpa_soap_i.h"
 
-struct wpa_soap * soap_init(const u8 *addr) {
+struct wpa_soap * soap_init(const u8 *addr,
+		    struct wpa_soap_callbacks *cb) {
   struct wpa_soap *wpa_soap;
 
   wpa_soap = os_zalloc(sizeof(struct wpa_soap));
   if (wpa_soap == NULL)
     return NULL;
   os_memcpy(wpa_soap->addr, addr, ETH_ALEN);
+	os_memcpy(&wpa_soap->cb, cb, sizeof(*cb));
 
   /*
    * 14: 2048 bit MODP

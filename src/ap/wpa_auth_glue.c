@@ -596,10 +596,31 @@ static int hostapd_wpa_auth_add_tspec(void *ctx, const u8 *sta_addr,
 #endif /* CONFIG_IEEE80211R_AP */
 
 
+#ifdef CONFIG_SOAP
+static int hostapd_wpa_soap_send_soap(void *ctx, const u8 *addr, const u8 *data,
+			size_t data_len, int encrypt)
+{
+	struct hostapd_data *hapd = ctx;
+	struct sta_info *sta;
+	u32 flags = 0;
+
+	sta = ap_get_sta(hapd, addr);
+	if (sta)
+		flags = hostapd_sta_flags_to_drv(sta->flags);
+
+	return hostapd_drv_hapd_send_soap(hapd, addr, data, data_len,
+					   encrypt, flags);
+}
+#endif /* CONFIG_SOAP */
+
+
 int hostapd_setup_wpa(struct hostapd_data *hapd)
 {
 	struct wpa_auth_config _conf;
 	struct wpa_auth_callbacks cb;
+#ifdef CONFIG_SOAP
+	struct wpa_soap_callbacks cb_soap;
+#endif /* CONFIG_SOAP */
 	const u8 *wpa_ie;
 	size_t wpa_ie_len;
 
@@ -636,7 +657,10 @@ int hostapd_setup_wpa(struct hostapd_data *hapd)
 	}
 
 #ifdef CONFIG_SOAP
-  hapd->wpa_soap = soap_init(hapd->own_addr);
+	os_memset(&cb_soap, 0, sizeof(cb_soap));
+	cb_soap.ctx = hapd;
+	cb_soap.send_soap = hostapd_wpa_soap_send_soap;
+  hapd->wpa_soap = soap_init(hapd->own_addr, &cb_soap);
   if (hapd->wpa_soap == NULL) {
     wpa_printf(MSG_ERROR, "SOAP initialization failed.");
     return -1;

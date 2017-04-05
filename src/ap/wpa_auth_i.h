@@ -14,6 +14,7 @@
 
 struct wpa_group;
 #ifdef CONFIG_SOAP
+#include "wpa_soap.h"
 #include "wpa_soap_i.h"
 #endif /* CONFIG_SOAP */
 
@@ -283,5 +284,11 @@ struct wpa_ft_pmk_cache * wpa_ft_pmk_cache_init(void);
 void wpa_ft_pmk_cache_deinit(struct wpa_ft_pmk_cache *cache);
 void wpa_ft_install_ptk(struct wpa_state_machine *sm);
 #endif /* CONFIG_IEEE80211R_AP */
+
+#ifdef CONFIG_SOAP
+void __wpa_send_soap(struct wpa_soap *wpa_soap,
+			   struct wpa_state_machine *sm, int ec_group,
+			   const u8 *q, int q_len, int encr);
+#endif /* CONFIG_SOAP */
 
 #endif /* WPA_AUTH_I_H */

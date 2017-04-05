@@ -60,6 +60,10 @@ static void wpa_group_put(struct wpa_authenticator *wpa_auth,
 			  struct wpa_group *group);
 static u8 * ieee80211w_kde_add(struct wpa_state_machine *sm, u8 *pos);
 
+#ifdef CONFIG_SOAP
+static void wpa_send_soap_timeout(void *eloop_ctx, void *timeout_ctx);
+#endif /* CONFIG_SOAP */
+
 static const u32 dot11RSNAConfigGroupUpdateCount = 4;
 static const u32 dot11RSNAConfigPairwiseUpdateCount = 4;
 static const u32 eapol_key_timeout_first = 100; /* ms */
@@ -3169,6 +3173,77 @@ SM_STEP(WPA_PTK_GROUP)
 
 
 #ifdef CONFIG_SOAP
+static inline int
+wpa_soap_send_soap(struct wpa_soap * wpa_soap, const u8 *addr,
+		    const u8 *data, size_t data_len, int encrypt)
+{
+	if (wpa_soap->cb.send_soap == NULL)
+		return -1;
+	return wpa_soap->cb.send_soap(wpa_soap->cb.ctx, addr, data, data_len, encrypt);
+}
+
+static void wpa_send_soap_timeout(void *eloop_ctx, void *timeout_ctx)
+{
+	// struct wpa_soap *wpa_soap = eloop_ctx;
+	struct wpa_state_machine *sm = timeout_ctx;
+
+	wpa_printf(MSG_DEBUG, "SOAP-Key timeout");
+	sm->TimeoutEvt = TRUE;
+	wpa_sm_step(sm);
+}
+
+void __wpa_send_soap(struct wpa_soap *wpa_soap,
+			   struct wpa_state_machine *sm, int ec_group,
+			   const u8 *q, int q_len, int encr)
+{
+	struct ieee802_1x_hdr *hdr;
+	u8 *payload;
+	size_t len;
+
+	wpa_printf(MSG_DEBUG, "SOAP: Send SOAP(version=%d encr=%d)", 0xff, encr);
+
+	len = sizeof(struct ieee802_1x_hdr) + 2 + q_len;
+	hdr = os_zalloc(len);
+	if (hdr == NULL)
+		return;
+	/*
+	 * NOTE and FIXME: This is temporary value. Not defiend in IEEE 802.1X
+	 */
+	hdr->version = 0xff;
+	hdr->type = 0xff;
+	hdr->length = host_to_be16(len  - sizeof(*hdr));
+	payload = (u8*)(hdr + sizeof(*hdr));
+	WPA_PUT_BE16(payload, q_len);
+	os_memcpy(payload + 2, q, q_len);
+
+	wpa_soap_send_soap(wpa_soap, sm->addr, (u8 *) hdr, len, encr);
+	os_free(hdr);
+}
+
+static void wpa_send_soap(struct wpa_soap *wpa_soap,
+			   struct wpa_state_machine *sm, int ec_group,
+			   const u8 *q, int q_len, int encr)
+{
+	int timeout_ms;
+	int ctr;
+
+	if (sm == NULL)
+		return;
+
+	__wpa_send_soap(wpa_soap, sm, ec_group, q, q_len, encr);
+
+	ctr = sm->TimeoutCtr;
+	if (ctr == 1)
+		timeout_ms = eapol_key_timeout_first;
+	else
+		timeout_ms = eapol_key_timeout_subseq;
+	wpa_printf(MSG_DEBUG, "SOAP: Use SOAP-Key timeout of %u ms (retry "
+		   "counter %d)", timeout_ms, ctr);
+	eloop_register_timeout(timeout_ms / 1000, (timeout_ms % 1000) * 1000,
+			       wpa_send_soap_timeout, wpa_soap, sm);
+}
+
+
 /*
  * NOTE
  * SM_STEP(SOAP): defines sm_SOAP_Step(sm)
@@ -3207,7 +3282,28 @@ SM_STATE(WPA_SOAP, INITIALIZE)
 
 SM_STATE(WPA_SOAP, SENDSOAPM1)
 {
+	u8 *q;
+	size_t prime_len;
+
 	SM_ENTRY_MA(WPA_SOAP, SENDSOAPM1, wpa_soap);
+	sm->TimeoutEvt = FALSE;
+	sm->TimeoutCtr++;
+	if (sm->TimeoutCtr > (int)dot11RSNAConfigPairwiseUpdateCount) {
+		return;
+	}
+
+	wpa_printf(MSG_DEBUG, "Sending 1/2 msg of SOAP 2-Way Handshake");
+	/*
+	 * TODO: Send SoapM1
+	 */
+	// 26: NID_secp224r1
+	prime_len = crypto_ec_prime_len(sm->wpa_soap->e);
+	q = os_zalloc(2 * prime_len);
+	if (crypto_ec_point_to_bin(sm->wpa_soap->e, sm->wpa_soap->q, q, q + prime_len)) {
+		wpa_printf(MSG_ERROR, "Failed to convert crypto_ec_poinrt Q to binary.");
+	}
+	wpa_send_soap(sm->wpa_soap, sm, 26, q, 2 * prime_len, 0);
+	os_free(q);
 }
 
 SM_STATE(WPA_SOAP, DERIVEPSK)
