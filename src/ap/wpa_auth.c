@@ -66,10 +66,6 @@ static const u32 eapol_key_timeout_first = 100; /* ms */
 static const u32 eapol_key_timeout_subseq = 1000; /* ms */
 static const u32 eapol_key_timeout_first_group = 500; /* ms */
 
-#ifdef CONFIG_SOAP
-static const u32 SOAPConfigUpdateCount = 4;
-#endif /* CONFIG_SOAP */
-
 /* TODO: make these configurable */
 static const int dot11RSNAConfigPMKLifetime = 43200;
 static const int dot11RSNAConfigPMKReauthThreshold = 70;
@@ -651,6 +647,7 @@ int wpa_auth_sta_associated(struct wpa_authenticator *wpa_auth,
 	 * it is done after SOAP Handshake finishes
 	 */
   if (!sm->wpa_soap->sta_use_soap)
+		return wpa_sm_step(sm);
 #endif /* CONFIG_SOAP */
 	sm->AuthenticationRequest = TRUE;
 	return wpa_sm_step(sm);
@@ -3234,7 +3231,7 @@ SM_STEP(WPA_SOAP)
 		case WPA_SOAP_SENDSOAPM1:
 			if (sm->SOAPKeyReceived)
 				SM_ENTER(WPA_SOAP, DERIVEPSK);
-			else if (sm->TimeoutCtr > (int) SOAPConfigUpdateCount) {
+			else if (sm->TimeoutCtr > (int) dot11RSNAConfigPairwiseUpdateCount) {
 				/*
 				 * TODO: disconnect
 				 */
