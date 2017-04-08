@@ -1877,6 +1877,63 @@ static int wpa_supp_aead_decrypt(struct wpa_sm *sm, u8 *buf, size_t buf_len,
 #endif /* CONFIG_FILS */
 
 
+#ifdef CONFIG_SOAP
+static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
+					  const unsigned char *src_addr,
+					  int ec_group,
+					  const u8 *q,
+					  int q_len)
+{
+	u8 _rand[20];
+
+	sm->e = crypto_ec_init(ec_group);
+	if (sm->e == NULL) {
+		return;
+	}
+
+	sm->g = crypto_ec_point_init(sm->e);
+	if (sm->g == NULL) {
+		goto deinit_e;
+	}
+
+	// Received Q = BG
+	sm->q = crypto_ec_point_from_bin(sm->e, q);
+	if (sm->q == NULL) {
+		goto deinit_g;
+	}
+
+	if (crypto_get_random(_rand, crypto_ec_prime_len(sm->e)) < 0) {
+		goto deinit_q;
+	}
+
+	sm->a = crypto_bignum_init_set(_rand, crypto_ec_prime_len(sm->e));
+	if (sm->a == NULL) {
+		goto deinit_q;
+	}
+
+	if (crypto_ec_point_mul(sm->e, sm->g, sm->a, sm->p)) {
+		goto deinit_q;
+	}
+	// wpa_supplicant_send_soap_2_of_2();
+
+deinit_q:
+	crypto_ec_point_deinit(sm->q, 1);
+deinit_g:
+	crypto_ec_point_deinit(sm->g, 0);
+deinit_e:
+	crypto_ec_deinit(sm->e);
+	return;
+}
+
+int wpa_supplicant_send_soap_2_of_2(struct wpa_sm *sm, const unsigned char *dst,
+			       const u8 *p,
+			       int p_len)
+{
+	return 0;
+}
+#endif /* CONFIG_SOAP */
+
+
 /**
  * wpa_sm_rx_eapol - Process received WPA EAPOL frames
  * @sm: Pointer to WPA state machine data from wpa_sm_init()
@@ -1913,6 +1970,14 @@ int wpa_sm_rx_eapol(struct wpa_sm *sm, const u8 *src_addr,
 	mic_len = wpa_mic_len(sm->key_mgmt);
 	keyhdrlen = sizeof(*key) + mic_len + 2;
 
+#ifdef CONFIG_SOAP
+	if (sm->assoc_soap_ie != NULL &&
+			!(len > 2 && buf[0] == 0xff && buf[1] == 0xff)) {
+				mic_len = 0;
+				keyhdrlen = 0;
+	}
+#endif /* CONFIG_SOAP */
+
 	if (len < sizeof(*hdr) + keyhdrlen) {
 		wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
 			"WPA: EAPOL frame too short to be a WPA "
@@ -1932,6 +1997,29 @@ int wpa_sm_rx_eapol(struct wpa_sm *sm, const u8 *src_addr,
 	if (hdr->version < EAPOL_VERSION) {
 		/* TODO: backwards compatibility */
 	}
+#ifdef CONFIG_SOAP
+	if (hdr->version == 0xff && hdr->type == 0xff) {
+		u8 *payload;
+		int ec_group;
+		u8 *q;
+		int q_len;
+
+		tmp = os_malloc(data_len);
+		if (tmp == NULL)
+			goto out;
+		os_memcpy(tmp, buf, data_len);
+
+		payload = (u8*)(tmp + sizeof((*hdr)));
+		ec_group = payload[0];
+		q_len = WPA_GET_BE16(payload + 1);
+		q = payload + 3;
+
+		wpa_supplicant_process_soap_1_of_2(sm, src_addr, ec_group, q, q_len);
+
+		ret = 1;
+		goto out;
+	}
+#endif /* CONFIG_SOAP */
 	if (hdr->type != IEEE802_1X_TYPE_EAPOL_KEY) {
 		wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
 			"WPA: EAPOL frame (type %u) discarded, "

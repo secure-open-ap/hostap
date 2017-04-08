@@ -148,6 +148,16 @@ struct wpa_sm {
 	size_t fils_key_auth_len;
 	unsigned int fils_completed:1;
 #endif /* CONFIG_FILS */
+
+#ifdef CONFIG_SOAP
+	u8 *assoc_soap_ie;
+	size_t assoc_soap_ie_len;
+	struct crypto_ec *e;
+	struct crypto_ec_point *g;
+	struct crypto_bignum *a;
+	struct crypto_ec_point *p;
+	struct crypto_ec_point *q;
+#endif /* CONFIG_SOAP */
 };
 
 
