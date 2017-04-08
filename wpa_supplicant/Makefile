@@ -951,6 +951,12 @@ endif
 endif
 endif
 
+ifdef CONFIG_SOAP
+CFLAGS += -DCONFIG_SOAP
+OBJS += ../src/rsn_supp/soap.o
+NEED_ECC=y
+endif
+
 ifdef CONFIG_SIM_SIMULATOR
 CFLAGS += -DCONFIG_SIM_SIMULATOR
 NEED_MILENAGE=y
@@ -1668,11 +1674,6 @@ OBJS += $(FST_OBJS)
 OBJS_t += $(FST_OBJS)
 OBJS_t2 += $(FST_OBJS)
 OBJS_nfc += $(FST_OBJS)
-endif
-
-ifdef CONFIG_SOAP
-CFLAGS += -DCONFIG_SOAP
-OBJS += ../src/rsn_supp/soap.o
 endif
 
 ifndef LDO
