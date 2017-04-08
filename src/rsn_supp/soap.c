@@ -7,7 +7,6 @@
 #include "includes.h"
 
 #include "common/ieee802_11_defs.h"
-#include "soap.h"
 
 int wpa_parse_soap_ie(const u8 *wpa_ie, size_t wpa_ie_len,
 		     char *data)
