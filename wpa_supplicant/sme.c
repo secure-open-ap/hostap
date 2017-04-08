@@ -1121,6 +1121,12 @@ void sme_associate(struct wpa_supplicant *wpa_s, enum wpas_mode mode,
 		params.wpa_proto = WPA_PROTO_OSEN;
 		wpa_sm_set_assoc_wpa_ie(wpa_s->wpa, elems.osen - 2,
 					elems.osen_len + 2);
+#ifdef CONFIG_SOAP
+	} else if (elems.soap_ie) {
+		params.soap = 1;
+		wpa_sm_set_assoc_soap_ie(wpa_s->wpa, elems.soap_ie - 2,
+					elems.soap_len + 2);
+#endif /* CONFIG_SOAP */
 	} else
 		wpa_sm_set_assoc_wpa_ie(wpa_s->wpa, NULL, 0);
 	if (wpa_s->current_ssid && wpa_s->current_ssid->p2p_group)

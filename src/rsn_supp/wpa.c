@@ -2408,6 +2408,10 @@ struct wpa_sm * wpa_sm_init(struct wpa_sm_ctx *ctx)
 		return NULL;
 	}
 
+#ifdef CONFIG_SOAP
+	sm->assoc_soap_ie = NULL;
+#endif /* CONFIG_SOAP */
+
 	return sm;
 }
 
@@ -3651,3 +3655,30 @@ int wpa_fils_is_completed(struct wpa_sm *sm)
 	return 0;
 #endif /* CONFIG_FILS */
 }
+
+#ifdef CONFIG_SOAP
+int wpa_sm_set_assoc_soap_ie(struct wpa_sm *sm, const u8 *ie, size_t len)
+{
+	if (sm == NULL)
+		return -1;
+
+	if (sm->assoc_soap_ie != NULL)
+		os_free(sm->assoc_soap_ie);
+	if (ie == NULL || len == 0) {
+		wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
+			"SOAP: clearing own SOAP IE");
+		sm->assoc_soap_ie = NULL;
+		sm->assoc_wpa_ie_len = 0;
+	} else {
+		wpa_hexdump(MSG_DEBUG, "SOAP: set own SOAP IE", ie, len);
+		sm->assoc_soap_ie = os_malloc(len);
+		if (sm->assoc_soap_ie == NULL)
+			return -1;
+
+		os_memcpy(sm->assoc_soap_ie, ie, len);
+		sm->assoc_soap_ie_len = len;
+	}
+
+	return 0;
+}
+#endif /* CONFIG_SOAP */
