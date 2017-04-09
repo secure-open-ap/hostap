@@ -3294,14 +3294,12 @@ SM_STATE(WPA_SOAP, SENDSOAPM1)
 	}
 
 	wpa_printf(MSG_DEBUG, "Sending 1/2 msg of SOAP 2-Way Handshake");
-	/*
-	 * TODO: Send SoapM1
-	 */
 	// 26: NID_secp224r1
 	prime_len = crypto_ec_prime_len(sm->wpa_soap->e);
 	q = os_zalloc(2 * prime_len);
 	if (crypto_ec_point_to_bin(sm->wpa_soap->e, sm->wpa_soap->q, q, q + prime_len)) {
-		wpa_printf(MSG_ERROR, "Failed to convert crypto_ec_poinrt Q to binary.");
+		wpa_printf(MSG_ERROR, "Failed to convert crypto_ec_point Q to binary.");
+		return;
 	}
 	wpa_send_soap(sm->wpa_soap, sm, 26, q, 2 * prime_len, 0);
 	os_free(q);
