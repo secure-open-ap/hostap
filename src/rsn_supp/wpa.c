@@ -1885,6 +1885,8 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 					  int q_len)
 {
 	u8 _rand[20];
+	u8 *p;
+	size_t prime_len;
 
 	sm->e = crypto_ec_init(ec_group);
 	if (sm->e == NULL) {
@@ -1914,8 +1916,30 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 	if (crypto_ec_point_mul(sm->e, sm->g, sm->a, sm->p)) {
 		goto deinit_q;
 	}
-	// wpa_supplicant_send_soap_2_of_2();
 
+	prime_len = crypto_ec_prime_len(sm->e);
+	p = os_zalloc(2 * prime_len);
+	if (p == NULL) {
+		goto deinit_p;
+	}
+
+	if (crypto_ec_point_to_bin(sm->e, sm->p, p, p + prime_len)) {
+		wpa_printf(MSG_ERROR, "Failed to convert crypto_ec_point P to binary.");
+		goto free_p;
+	}
+
+	if (wpa_supplicant_send_soap_2_of_2(sm, sm->bssid, p, 2 * prime_len)) {
+		goto free_p;
+	}
+
+	// set u8 *psk (256 bit = 32 byte)
+
+	return;
+
+free_p:
+	os_free(p);
+deinit_p:
+	crypto_ec_point_deinit(sm->p, 0);
 deinit_q:
 	crypto_ec_point_deinit(sm->q, 1);
 deinit_g:

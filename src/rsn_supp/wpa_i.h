@@ -386,6 +386,12 @@ int wpa_supplicant_send_4_of_4(struct wpa_sm *sm, const unsigned char *dst,
 			       u16 ver, u16 key_info,
 			       struct wpa_ptk *ptk);
 
+#ifdef CONFIG_SOAP
+int wpa_supplicant_send_soap_2_of_2(struct wpa_sm *sm, const unsigned char *dst,
+		       const u8 *p,
+		       int p_len);
+#endif /* CONFIG_SOAP */
+
 int wpa_derive_ptk_ft(struct wpa_sm *sm, const unsigned char *src_addr,
 		      const struct wpa_eapol_key *key, struct wpa_ptk *ptk);
 
