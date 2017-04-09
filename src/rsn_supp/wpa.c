@@ -1946,6 +1946,7 @@ deinit_g:
 	crypto_ec_point_deinit(sm->g, 0);
 deinit_e:
 	crypto_ec_deinit(sm->e);
+	wpa_sm_deauthenticate(sm, WLAN_REASON_UNSPECIFIED);
 	return;
 }
 
