@@ -1954,7 +1954,30 @@ int wpa_supplicant_send_soap_2_of_2(struct wpa_sm *sm, const unsigned char *dst,
 			       const u8 *p,
 			       int p_len)
 {
-	return 0;
+	int ret = -1;
+
+	struct ieee802_1x_hdr *hdr;
+	u8 *payload;
+	size_t len;
+
+	len = sizeof(struct ieee802_1x_hdr) + 2 + p_len;
+	hdr = os_zalloc(len);
+	if (hdr == NULL) {
+		ret = -1;
+		goto out;
+	}
+
+	hdr->version = 0xff;
+	hdr->type = 0xff;
+	hdr->length = host_to_be16(len - sizeof(*hdr));
+	payload = (u8*)(hdr + sizeof(*hdr));
+	WPA_PUT_BE16(payload, p_len);
+	os_memcpy(payload + 2, p, p_len);
+
+	ret = wpa_sm_ether_send(sm, dst, ETH_P_EAPOL, (u8 *) hdr, len);
+
+out:
+	return ret;
 }
 #endif /* CONFIG_SOAP */
 
