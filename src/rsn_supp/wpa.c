@@ -1946,7 +1946,9 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 		goto free_p;
 	}
 
-	// set u8 *psk (256 bit = 32 byte)
+	/*
+	 * TODO: resrouces are not freed yet
+	 */
 
 	return;
 
