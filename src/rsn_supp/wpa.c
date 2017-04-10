@@ -1942,6 +1942,7 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 	}
 
 	if (wpa_supplicant_send_soap_2_of_2(sm, sm->bssid, p, 2 * prime_len)) {
+		wpa_printf(MSG_ERROR, "Failed to send SOAP-M2");
 		goto free_p;
 	}
 
