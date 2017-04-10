@@ -14,6 +14,9 @@ struct wpa_soap {
   struct crypto_ec_point *g;
   struct crypto_bignum *b;
   struct crypto_ec_point *q;
+  struct crypto_ec_point *p;
+  struct crypto_ec_point *soap_pmk_ec;
+  u8 soap_pmk[PMK_LEN];
 
   struct wpa_soap_callbacks cb;
 

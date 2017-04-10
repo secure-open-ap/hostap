@@ -74,3 +74,50 @@ int wpa_soap_sta_init(struct wpa_state_machine *sm, struct wpa_soap *wpa_soap,
   return 0;
 
 }
+
+void soap_receive(struct wpa_soap *wpa_soap,
+     struct wpa_state_machine *sm,
+     u8 *data, size_t data_len)
+{
+  /*
+   * TODO: need to implement this in state machine!
+   */
+  struct ieee802_1x_hdr *hdr;
+  u8 *payload;
+  u8 *p;
+  int p_len;
+
+  tmp = os_malloc(data_len);
+  if (tmp == NULL) {
+    goto out;
+  }
+  os_memcpy(tmp, data, data_len);
+
+  payload = (u8*)(tmp + sizeof(*hdr));
+  p_len = WPA_GET_BE16(payload);
+  p = payload + 2;
+
+  wpa_soap->p = crypto_ec_point_from_bin(wpa_soap->e, p);
+  if (wpa_soap->p) {
+    goto free_tmp;
+  }
+
+  if (crypto_ec_point_mul(wpa_soap->e, wpa_soap->b, wpa_soap->p, wpa_soap->soap_pmk_ec)) {
+    goto deinit_p;
+  }
+
+  if (crypto_ec_point_to_bin(wpa_soap->e, wpa_soap->soap_pmk_ec, NULL, wpa_soap->soap_pmk)) {
+    goto deinit_p;
+  }
+  /*
+   * TODO: set PMK
+   * NOTE: need to backup *normal* PMK?
+   */
+
+deinit_p:
+  crypto_ec_point_deinit(wpa_soap->p, 0);
+free_tmp:
+  os_free(tmp);
+out:
+  return;
+}
