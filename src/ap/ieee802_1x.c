@@ -35,6 +35,10 @@
 #include "ieee802_11.h"
 #include "ieee802_1x.h"
 
+#ifdef CONFIG_SOAP
+#include "ap/wpa_soap.h"
+#endif /* CONFIG_SOAP */
+
 
 #ifdef CONFIG_HS20
 static void ieee802_1x_wnm_notif_send(void *eloop_ctx, void *timeout_ctx);

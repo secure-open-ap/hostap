@@ -83,6 +83,7 @@ void soap_receive(struct wpa_soap *wpa_soap,
    * TODO: need to implement this in state machine!
    */
   struct ieee802_1x_hdr *hdr;
+  u8 *tmp = NULL;
   u8 *payload;
   u8 *p;
   int p_len;
@@ -102,7 +103,7 @@ void soap_receive(struct wpa_soap *wpa_soap,
     goto free_tmp;
   }
 
-  if (crypto_ec_point_mul(wpa_soap->e, wpa_soap->b, wpa_soap->p, wpa_soap->soap_pmk_ec)) {
+  if (crypto_ec_point_mul(wpa_soap->e, wpa_soap->p, wpa_soap->b, wpa_soap->soap_pmk_ec)) {
     goto deinit_p;
   }
 

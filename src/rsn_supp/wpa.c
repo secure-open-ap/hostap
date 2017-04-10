@@ -1955,7 +1955,7 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 free_p:
 	os_free(p);
 deinit_soap_pmk_ec:
-	crypto_ec_point_deinit(sm->PMK, 1);
+	crypto_ec_point_deinit(sm->soap_pmk_ec, 1);
 deinit_p:
 	crypto_ec_point_deinit(sm->p, 0);
 deinit_q:
