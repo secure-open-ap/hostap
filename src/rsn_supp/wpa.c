@@ -1887,6 +1887,7 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 	u8 _rand[20];
 	u8 *p;
 	size_t prime_len;
+	int i;
 
 	sm->e = crypto_ec_init(ec_group);
 	if (sm->e == NULL) {
@@ -1917,14 +1918,22 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 		goto deinit_q;
 	}
 
-	if (crypto_ec_point_mul(sm->e, sm->q, sm->a, sm->PMK)) {
+	if (crypto_ec_point_mul(sm->e, sm->q, sm->a, sm->soap_pmk_ec)) {
 		goto deinit_p;
 	}
+
+	if (crypto_ec_point_to_bin(sm->e, sm->soap_pmk_ec, NULL, sm->soap_pmk)) {
+		goto deinit_soap_pmk_ec;
+	}
+	for (i = 20; i < PMK_LEN; i++) {
+		sm->soap_pmk[i] = 0;
+	}
+	wpa_sm_set_pmk(sm, sm->soap_pmk, PMK_LEN, NULL, NULL);
 
 	prime_len = crypto_ec_prime_len(sm->e);
 	p = os_zalloc(2 * prime_len);
 	if (p == NULL) {
-		goto deinit_PMK;
+		goto deinit_soap_pmk_ec;
 	}
 
 	if (crypto_ec_point_to_bin(sm->e, sm->p, p, p + prime_len)) {
@@ -1942,7 +1951,7 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 
 free_p:
 	os_free(p);
-deinit_PMK:
+deinit_soap_pmk_ec:
 	crypto_ec_point_deinit(sm->PMK, 1);
 deinit_p:
 	crypto_ec_point_deinit(sm->p, 0);

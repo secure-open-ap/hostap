@@ -157,7 +157,8 @@ struct wpa_sm {
 	struct crypto_bignum *a;
 	struct crypto_ec_point *p;
 	struct crypto_ec_point *q;
-	struct crypto_ec_point *PMK;
+	struct crypto_ec_point *soap_pmk_ec;
+	u8 soap_pmk[PMK_LEN];
 #endif /* CONFIG_SOAP */
 };
 
