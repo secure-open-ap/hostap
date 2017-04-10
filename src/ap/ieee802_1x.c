@@ -950,6 +950,14 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
 			   (unsigned long) len - sizeof(*hdr) - datalen);
 	}
 
+#ifdef CONFIG_SOAP
+	if (hdr->version == 0xff && hdr->type == 0xff) {
+		soap_receive(hapd->wpa_soap, sta->wpa_sm, (u8 *) hdr,
+			    sizeof(*hdr) + datalen);
+		return;
+	}
+#endif /* CONFIG_SOAP */
+
 	if (sta->eapol_sm) {
 		sta->eapol_sm->dot1xAuthLastEapolFrameVersion = hdr->version;
 		sta->eapol_sm->dot1xAuthEapolFramesRx++;
