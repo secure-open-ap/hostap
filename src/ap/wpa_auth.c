@@ -1364,6 +1364,44 @@ continue_processing:
 }
 
 
+#ifdef CONFIG_SOAP
+void soap_receive(struct wpa_soap *wpa_soap,
+		 struct wpa_state_machine *sm,
+		 u8 *data, size_t data_len)
+{
+	/*
+	* TODO: need to implement this in state machine!
+	*/
+	struct ieee802_1x_hdr *hdr;
+	u8 *tmp = NULL;
+	u8 *payload;
+	u8 *p;
+	int p_len;
+
+	tmp = os_malloc(data_len);
+	if (tmp == NULL) {
+		goto out;
+	}
+	os_memcpy(tmp, data, data_len);
+
+	payload = (u8*)(tmp + sizeof(*hdr));
+	p_len = WPA_GET_BE16(payload);
+	p = payload + 2;
+
+	wpa_soap->p = crypto_ec_point_from_bin(wpa_soap->e, p);
+	if (wpa_soap->p) {
+		goto free_tmp;
+	}
+	wpa_sm_step(sm);
+
+free_tmp:
+	os_free(tmp);
+out:
+	return;
+}
+#endif /* CONFIG_SOAP */
+
+
 static int wpa_gmk_to_gtk(const u8 *gmk, const char *label, const u8 *addr,
 			  const u8 *gnonce, u8 *gtk, size_t gtk_len)
 {
@@ -3308,6 +3346,26 @@ SM_STATE(WPA_SOAP, SENDSOAPM1)
 SM_STATE(WPA_SOAP, DERIVEPSK)
 {
 	SM_ENTRY_MA(WPA_SOAP, SENDSOAPM1, wpa_soap);
+
+	if (crypto_ec_point_mul(sm->wpa_soap->e, sm->wpa_soap->p, sm->wpa_soap->b, sm->wpa_soap->soap_pmk_ec)) {
+		goto deinit_p;
+	}
+
+	if (crypto_ec_point_to_bin(sm->wpa_soap->e, sm->wpa_soap->soap_pmk_ec, NULL, sm->wpa_soap->soap_pmk)) {
+		goto deinit_p;
+	}
+	/* TODO: set PMK
+	 * NOTE: need to backup *normal* PMK?
+	 */
+	/*
+	 * NOTE: Proceed WPA/WPA2-PSK 4-Way Handshake
+	 */
+
+	sm->AuthenticationRequest = TRUE;
+
+deinit_p:
+	crypto_ec_point_deinit(sm->wpa_soap->p, 0);
+	return;
 }
 
 SM_STATE(WPA_SOAP, DONE)

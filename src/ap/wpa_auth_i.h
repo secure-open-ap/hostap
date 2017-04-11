@@ -15,7 +15,6 @@
 struct wpa_group;
 #ifdef CONFIG_SOAP
 #include "wpa_soap.h"
-#include "wpa_soap_i.h"
 #endif /* CONFIG_SOAP */
 
 struct wpa_stsl_negotiation {
@@ -201,6 +200,24 @@ struct wpa_group {
 
 
 struct wpa_ft_pmk_cache;
+
+#ifdef CONFIG_SOAP
+struct wpa_soap {
+	int sta_use_soap;
+	// const struct dh_group *dh_group;
+	struct crypto_ec *e;
+	struct crypto_ec_point *g;
+	struct crypto_bignum *b;
+	struct crypto_ec_point *q;
+	struct crypto_ec_point *p;
+	struct crypto_ec_point *soap_pmk_ec;
+	u8 soap_pmk[PMK_LEN];
+
+	struct wpa_soap_callbacks cb;
+
+	u8 addr[ETH_ALEN];
+};
+#endif /* CONFIG_SOAP */
 
 /* per authenticator data */
 struct wpa_authenticator {

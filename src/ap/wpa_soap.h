@@ -22,8 +22,5 @@ struct wpa_soap * soap_init(const u8 *addr,
 				    struct wpa_soap_callbacks *cb);
 int wpa_soap_sta_init(struct wpa_state_machine *sm, struct wpa_soap *wpa_soap,
 				    const u8 *addr, int sta_use_soap);
-void soap_receive(struct wpa_soap *wpa_soap,
-		 struct wpa_state_machine *sm,
-		 u8 *data, size_t data_len);
 
 #endif /* WPA_SOAP_H */
