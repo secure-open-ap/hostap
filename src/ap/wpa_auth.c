@@ -1376,7 +1376,7 @@ void soap_receive(struct wpa_soap *wpa_soap,
 	u8 *tmp = NULL;
 	u8 *payload;
 	u8 *p;
-	int p_len;
+	// int p_len;
 
 	tmp = os_malloc(data_len);
 	if (tmp == NULL) {
@@ -1385,7 +1385,7 @@ void soap_receive(struct wpa_soap *wpa_soap,
 	os_memcpy(tmp, data, data_len);
 
 	payload = (u8*)(tmp + sizeof(*hdr));
-	p_len = WPA_GET_BE16(payload);
+	// p_len = WPA_GET_BE16(payload);
 	p = payload + 2;
 
 	wpa_soap->p = crypto_ec_point_from_bin(wpa_soap->e, p);
