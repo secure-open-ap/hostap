@@ -2023,6 +2023,14 @@ SM_STATE(WPA_PTK, INITPSK)
 	const u8 *psk;
 	SM_ENTRY_MA(WPA_PTK, INITPSK, wpa_ptk);
 	psk = wpa_auth_get_psk(sm->wpa_auth, sm->addr, sm->p2p_dev_addr, NULL);
+#ifdef CONFIG_SOAP
+	if (sm->wpa_soap && sm->wpa_soap->sta_use_soap) {
+		os_memcpy(sm->PMK, sm->wpa_soap->soap_pmk, PMK_LEN);
+		sm->pmk_len = PMK_LEN;
+		sm->req_replay_counter_used = 0;
+		return;
+	}
+#endif /* CONFIG_SOAP */
 	if (psk) {
 		os_memcpy(sm->PMK, psk, PMK_LEN);
 		sm->pmk_len = PMK_LEN;
@@ -3345,6 +3353,7 @@ SM_STATE(WPA_SOAP, SENDSOAPM1)
 
 SM_STATE(WPA_SOAP, DERIVEPSK)
 {
+	int i;
 	SM_ENTRY_MA(WPA_SOAP, SENDSOAPM1, wpa_soap);
 
 	if (crypto_ec_point_mul(sm->wpa_soap->e, sm->wpa_soap->p, sm->wpa_soap->b, sm->wpa_soap->soap_pmk_ec)) {
@@ -3354,13 +3363,11 @@ SM_STATE(WPA_SOAP, DERIVEPSK)
 	if (crypto_ec_point_to_bin(sm->wpa_soap->e, sm->wpa_soap->soap_pmk_ec, NULL, sm->wpa_soap->soap_pmk)) {
 		goto deinit_p;
 	}
-	/* TODO: set PMK
-	 * NOTE: need to backup *normal* PMK?
-	 */
-	/*
-	 * NOTE: Proceed WPA/WPA2-PSK 4-Way Handshake
-	 */
+	for (i = crypto_ec_prime_len(sm->wpa_soap->e); i < PMK_LEN; i++) {
+		sm->wpa_soap->soap_pmk[i] = 0;
+	}
 
+	/* Proceed WPA/WPA2-PSK 4-Way Handshake */
 	sm->AuthenticationRequest = TRUE;
 
 deinit_p:
