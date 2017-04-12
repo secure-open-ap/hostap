@@ -952,6 +952,8 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
 
 #ifdef CONFIG_SOAP
 	if (hdr->version == 0xff && hdr->type == 0xff) {
+		wpa_printf(MSG_DEBUG, "   Proceeding with soap_receive()");
+		wpa_printf(MSG_DEBUG, "      the rest of ieee802_1x_receive() will not run");
 		soap_receive(hapd->wpa_soap, sta->wpa_sm, (u8 *) hdr,
 			    sizeof(*hdr) + datalen);
 		return;

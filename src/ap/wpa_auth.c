@@ -650,8 +650,10 @@ int wpa_auth_sta_associated(struct wpa_authenticator *wpa_auth,
 	 * Skip sm->AuthenticationRequest if STA wants to use SOAP
 	 * it is done after SOAP Handshake finishes
 	 */
-  if (!sm->wpa_soap->sta_use_soap)
+	if (!sm->wpa_soap->sta_use_soap) {
+		wpa_printf(MSG_DEBUG, "STA wants to use SOAP. Defer WPA_PTK state machine");
 		return wpa_sm_step(sm);
+	}
 #endif /* CONFIG_SOAP */
 	sm->AuthenticationRequest = TRUE;
 	return wpa_sm_step(sm);
@@ -1369,14 +1371,11 @@ void soap_receive(struct wpa_soap *wpa_soap,
 		 struct wpa_state_machine *sm,
 		 u8 *data, size_t data_len)
 {
-	/*
-	* TODO: need to implement this in state machine!
-	*/
 	struct ieee802_1x_hdr *hdr;
 	u8 *tmp = NULL;
 	u8 *payload;
 	u8 *p;
-	// int p_len;
+	int p_len;
 
 	tmp = os_malloc(data_len);
 	if (tmp == NULL) {
@@ -1385,13 +1384,16 @@ void soap_receive(struct wpa_soap *wpa_soap,
 	os_memcpy(tmp, data, data_len);
 
 	payload = (u8*)(tmp + sizeof(*hdr));
-	// p_len = WPA_GET_BE16(payload);
+	p_len = WPA_GET_BE16(payload);
 	p = payload + 2;
 
+	wpa_hexdump(MSG_DEBUG, "SOAP: P", p, p_len);
 	wpa_soap->p = crypto_ec_point_from_bin(wpa_soap->e, p);
 	if (wpa_soap->p) {
+		wpa_printf(MSG_DEBUG, "SOAP: Failed to get P = AG from SOAP-M2");
 		goto free_tmp;
 	}
+	sm->SOAPKeyReceived = TRUE;
 	wpa_sm_step(sm);
 
 free_tmp:
@@ -2025,6 +2027,7 @@ SM_STATE(WPA_PTK, INITPSK)
 	psk = wpa_auth_get_psk(sm->wpa_auth, sm->addr, sm->p2p_dev_addr, NULL);
 #ifdef CONFIG_SOAP
 	if (sm->wpa_soap && sm->wpa_soap->sta_use_soap) {
+		wpa_printf(MSG_DEBUG, "We are using SOAP. Get PMK from SOAP authenticator instead");
 		os_memcpy(sm->PMK, sm->wpa_soap->soap_pmk, PMK_LEN);
 		sm->pmk_len = PMK_LEN;
 		sm->req_replay_counter_used = 0;
@@ -3308,23 +3311,25 @@ SM_STATE(WPA_SOAP, INITIALIZE)
 
 	struct crypto_ec *e = sm->wpa_soap->e;
 	if (crypto_get_random(_rand, crypto_ec_prime_len(e)) < 0) {
-		wpa_printf(MSG_ERROR, "SOAP: Failed to initialize elliptic curve group.");
-		sm->Disconnect = TRUE;
-		return;
+		wpa_printf(MSG_ERROR, "SOAP: Failed to initialize AP random");
+		goto err;
 	}
 	sm->wpa_soap->b = crypto_bignum_init_set(_rand, crypto_ec_prime_len(e));
 	if (sm->wpa_soap->b == NULL) {
-		wpa_printf(MSG_ERROR, "SOAP: Failed to initialize AP random.");
-		sm->Disconnect = TRUE;
-		return;
+		wpa_printf(MSG_ERROR, "SOAP: Failed to set bignum from AP random");
+		goto err;
 	}
 	if (crypto_ec_point_mul(e, sm->wpa_soap->g, sm->wpa_soap->b,
 		sm->wpa_soap->q)) {
 		wpa_printf(MSG_ERROR, "SOAP: Failed to calculate Q = BG.");
-		sm->Disconnect = TRUE;
-		return;
+		goto err;
 	}
 	sm->TimeoutCtr = 0;
+	return;
+
+err:
+	sm->Disconnect = TRUE;
+	return;
 }
 
 SM_STATE(WPA_SOAP, SENDSOAPM1)
@@ -3344,7 +3349,7 @@ SM_STATE(WPA_SOAP, SENDSOAPM1)
 	prime_len = crypto_ec_prime_len(sm->wpa_soap->e);
 	q = os_zalloc(2 * prime_len);
 	if (crypto_ec_point_to_bin(sm->wpa_soap->e, sm->wpa_soap->q, q, q + prime_len)) {
-		wpa_printf(MSG_ERROR, "Failed to convert crypto_ec_point Q to binary.");
+		wpa_printf(MSG_ERROR, "SOAP: Failed to convert crypto_ec_point Q to binary.");
 		return;
 	}
 	wpa_send_soap(sm->wpa_soap, sm, 26, q, 2 * prime_len, 0);
@@ -3357,10 +3362,12 @@ SM_STATE(WPA_SOAP, DERIVEPSK)
 	SM_ENTRY_MA(WPA_SOAP, SENDSOAPM1, wpa_soap);
 
 	if (crypto_ec_point_mul(sm->wpa_soap->e, sm->wpa_soap->p, sm->wpa_soap->b, sm->wpa_soap->soap_pmk_ec)) {
+		wpa_printf(MSG_ERROR, "Failed to calculate PMK = BP = ABG");
 		goto deinit_p;
 	}
 
 	if (crypto_ec_point_to_bin(sm->wpa_soap->e, sm->wpa_soap->soap_pmk_ec, NULL, sm->wpa_soap->soap_pmk)) {
+		wpa_printf(MSG_ERROR, "Failed to convert PMK EC point to binary");
 		goto deinit_p;
 	}
 	for (i = crypto_ec_prime_len(sm->wpa_soap->e); i < PMK_LEN; i++) {
@@ -3729,6 +3736,7 @@ static int wpa_sm_step(struct wpa_state_machine *sm)
 		sm->wpa_auth->group->changed = FALSE;
 
 #ifdef CONFIG_SOAP
+		wpa_printf(MSG_DEBUG, "Running WPA_SOAP state machine");
 		SM_STEP_RUN(WPA_SOAP);
 		if (sm->pending_deinit)
 			break;

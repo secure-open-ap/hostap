@@ -1891,38 +1891,46 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 
 	sm->e = crypto_ec_init(ec_group);
 	if (sm->e == NULL) {
+		wpa_printf(MSG_ERROR, "Initializing EC group (%d) failed", ec_group);
 		return;
 	}
 
 	sm->g = crypto_ec_point_init(sm->e);
 	if (sm->g == NULL) {
+		wpa_printf(MSG_ERROR, "Initializing EC generator failed");
 		goto deinit_e;
 	}
 
 	// Received Q = BG
 	sm->q = crypto_ec_point_from_bin(sm->e, q);
 	if (sm->q == NULL) {
+		wpa_printf(MSG_ERROR, "Converting Q = BG from binary to EC point failed");
 		goto deinit_g;
 	}
 
 	if (crypto_get_random(_rand, crypto_ec_prime_len(sm->e)) < 0) {
+		wpa_printf(MSG_ERROR, "Getting random A failed");
 		goto deinit_q;
 	}
 
 	sm->a = crypto_bignum_init_set(_rand, crypto_ec_prime_len(sm->e));
 	if (sm->a == NULL) {
+		wpa_printf(MSG_ERROR, "Converting random A from binary to bignum failed");
 		goto deinit_q;
 	}
 
 	if (crypto_ec_point_mul(sm->e, sm->g, sm->a, sm->p)) {
+		wpa_printf(MSG_ERROR, "Calculating P = AG failed");
 		goto deinit_q;
 	}
 
 	if (crypto_ec_point_mul(sm->e, sm->q, sm->a, sm->soap_pmk_ec)) {
+		wpa_printf(MSG_ERROR, "Calculating PMK = AQ = ABG failed");
 		goto deinit_p;
 	}
 
 	if (crypto_ec_point_to_bin(sm->e, sm->soap_pmk_ec, NULL, sm->soap_pmk)) {
+		wpa_printf(MSG_ERROR, "Converting PMK from EC point to binary failed");
 		goto deinit_soap_pmk_ec;
 	}
 	for (i = 20; i < PMK_LEN; i++) {
@@ -2039,6 +2047,7 @@ int wpa_sm_rx_eapol(struct wpa_sm *sm, const u8 *src_addr,
 #ifdef CONFIG_SOAP
 	if (sm->assoc_soap_ie != NULL &&
 			!(len > 2 && buf[0] == 0xff && buf[1] == 0xff)) {
+				wpa_printf(MSG_DEBUG, "We are receiving SOAP-M1. Bypassing MIC check");
 				mic_len = 0;
 				keyhdrlen = 0;
 	}
@@ -2069,6 +2078,8 @@ int wpa_sm_rx_eapol(struct wpa_sm *sm, const u8 *src_addr,
 		int ec_group;
 		u8 *q;
 		int q_len;
+
+		wpa_printf(MSG_DEBUG, "Processing SOAP-M1");
 
 		tmp = os_malloc(data_len);
 		if (tmp == NULL)

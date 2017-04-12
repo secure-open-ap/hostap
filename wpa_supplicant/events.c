@@ -1226,7 +1226,13 @@ struct wpa_bss * wpa_supplicant_pick_network(struct wpa_supplicant *wpa_s,
 	ssid = *selected_ssid;
 #ifdef CONFIG_SOAP
 	if (selected && ssid && ssid->soap) {
-		return selected;
+		const u8 *soap_ie;
+
+		soap_ie = wpa_bss_get_ie(selected, WLAN_EID_SOAP);
+		if (soap_ie && (soap_ie[2] || soap_ie[1] > 1)) {
+			wpa_dbg(wpa_s, MSG_DEBUG, "AP has SOAP capab and STA wants to use SOAP. No need of PSK");
+			return selected;
+		}
 	}
 #endif /* CONFIG_SOAP */
 	if (selected && ssid && ssid->mem_only_psk && !ssid->psk_set &&

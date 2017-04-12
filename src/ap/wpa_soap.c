@@ -41,11 +41,13 @@ struct wpa_soap * soap_init(const u8 *addr,
    */
   wpa_soap->e = crypto_ec_init(26);
   if (wpa_soap->e == NULL) {
+    wpa_printf(MSG_ERROR, "Initializing EC group (%d) for SOAP failed", 26);
     goto free_wpa_soap;
   }
 
   wpa_soap->g = crypto_ec_point_init(wpa_soap->e);
   if (wpa_soap->g == NULL) {
+    wpa_printf(MSG_ERROR, "Initializing EC generator for SOAP failed");
     goto deinit_e;
   }
 

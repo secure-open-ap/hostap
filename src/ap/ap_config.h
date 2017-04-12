@@ -19,10 +19,6 @@
 #include "fst/fst.h"
 #include "vlan.h"
 
-#ifdef CONFIG_SOAP
-#include "crypto/dh_groups.h"
-#endif /* CONFIG_SOAP */
-
 /**
  * mesh_conf - local MBSS state and settings
  */
@@ -335,7 +331,6 @@ struct hostapd_bss_config {
 
 #ifdef CONFIG_SOAP
 	int soap; /* use SOAP */
-	const struct dh_group *soap_dh_group; /* exponent of Mersenne prime p */
 #endif /* CONFIG_SOAP */
 
 #ifdef CONFIG_IEEE80211R_AP

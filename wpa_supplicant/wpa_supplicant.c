@@ -1342,6 +1342,7 @@ int wpa_supplicant_set_suites(struct wpa_supplicant *wpa_s,
 #ifdef CONFIG_SOAP
 		if (ssid->soap) {
 			wpa_s->soap = ssid->soap;
+			wpa_dbg(wpa_s, MSG_DEBUG, "SOAP: STA wants to use SOAP");
 			return 0;
 		}
 #endif /* CONFIG_SOAP */
@@ -3517,7 +3518,9 @@ void wpa_supplicant_rx_eapol(void *ctx, const u8 *src_addr,
 		wpa_supplicant_req_auth_timeout(wpa_s, timeout, 0);
 	}
 #ifdef CONFIG_SOAP
-	if (!(len > 2 && buf[0] == 0xff && buf[1] == 0xff))
+	if ((len > 2 && buf[0] == 0xff && buf[1] == 0xff))
+		wpa_printf(MSG_DEBUG, "We don't count SOAP packet as EAPOL packet");
+	else
 #endif /* CONFIG_SOAP */
 	wpa_s->eapol_received++;
 
@@ -5981,7 +5984,11 @@ int wpas_network_disabled(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid)
 	}
 
 #ifdef CONFIG_SOAP
+	/*
+	 * FIXME: Need to check AP has SOAP capab?
+	 */
 	if (ssid->soap) {
+		wpa_printf(MSG_DEBUG, "STA wants to use SOAP. Skip checking WPA/WPA2-PSK");
 		return 0;
 	}
 #endif /* CONFIG_SOAP */

@@ -62,7 +62,7 @@ void hostapd_config_defaults_bss(struct hostapd_bss_config *bss)
 
 	#ifdef CONFIG_SOAP
 	bss->soap = 0;
-	bss->soap_dh_group = NULL;
+	wpa_printf(MSG_DEBUG, "Initializing SOAP capability (%d) of AP", bss->soap);
 	#endif /* CONFIG_SOAP */
 
 	bss->max_num_sta = MAX_STA_COUNT;

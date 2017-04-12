@@ -21,10 +21,6 @@
 #include "ap/ap_config.h"
 #include "config_file.h"
 
-#ifdef CONFIG_SOAP
-#include "crypto/dh_groups.h"
-#endif /* CONFIG_SOAP */
-
 #ifndef CONFIG_NO_RADIUS
 #ifdef EAP_SERVER
 static struct hostapd_radius_attr *
@@ -2539,8 +2535,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 #endif /* CONFIG_PEERKEY */
 #ifdef CONFIG_SOAP
 	} else if (os_strcmp(buf, "soap") == 0) {
-		bss->soap=atoi(pos);
-		bss->soap_dh_group = dh_groups_get(14);
+		bss->soap=!!atoi(pos);
+		wpa_printf(MSG_DEBUG, "Setting up SOAP capability (%d) of AP", bss->soap);
 #endif /* CONFIG_SOAP */
 #ifdef CONFIG_IEEE80211R
 	} else if (os_strcmp(buf, "mobility_domain") == 0) {
