@@ -650,7 +650,7 @@ int wpa_auth_sta_associated(struct wpa_authenticator *wpa_auth,
 	 * Skip sm->AuthenticationRequest if STA wants to use SOAP
 	 * it is done after SOAP Handshake finishes
 	 */
-	if (!sm->wpa_soap->sta_use_soap) {
+	if (sm->wpa_soap->sta_use_soap) {
 		wpa_printf(MSG_DEBUG, "STA wants to use SOAP. Defer WPA_PTK state machine");
 		return wpa_sm_step(sm);
 	}
@@ -3736,10 +3736,12 @@ static int wpa_sm_step(struct wpa_state_machine *sm)
 		sm->wpa_auth->group->changed = FALSE;
 
 #ifdef CONFIG_SOAP
-		wpa_printf(MSG_DEBUG, "Running WPA_SOAP state machine");
-		SM_STEP_RUN(WPA_SOAP);
-		if (sm->pending_deinit)
-			break;
+		if (sm->wpa_soap->sta_use_soap) {
+			wpa_printf(MSG_DEBUG, "Running WPA_SOAP state machine");
+			SM_STEP_RUN(WPA_SOAP);
+			if (sm->pending_deinit)
+				break;
+		}
 #endif /* CONFIG_SOAP */
 		SM_STEP_RUN(WPA_PTK);
 		if (sm->pending_deinit)
