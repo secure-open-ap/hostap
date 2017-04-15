@@ -51,6 +51,7 @@ struct wpa_state_machine {
 
 #ifdef CONFIG_SOAP
 	enum {
+		WPA_SOAP_UNINITIALIZED,
 		WPA_SOAP_INITIALIZE, WPA_SOAP_SENDSOAPM1, WPA_SOAP_DERIVEPSK,
 		WPA_SOAP_DONE
 	} wpa_soap_state;

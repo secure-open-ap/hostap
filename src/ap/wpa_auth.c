@@ -3392,6 +3392,8 @@ SM_STEP(WPA_SOAP)
 	if (sm->Init)
 		SM_ENTER(WPA_SOAP, INITIALIZE);
 	else switch (sm->wpa_soap_state) {
+		case WPA_SOAP_UNINITIALIZED:
+			break;
 		case WPA_SOAP_INITIALIZE:
 			SM_ENTER(WPA_SOAP, SENDSOAPM1);
 			break;
