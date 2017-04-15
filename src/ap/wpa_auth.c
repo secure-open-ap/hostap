@@ -3306,10 +3306,11 @@ static void wpa_send_soap(struct wpa_soap *wpa_soap,
  */
 SM_STATE(WPA_SOAP, INITIALIZE)
 {
-	u8 _rand[20];
+	u8 *_rand;
 	SM_ENTRY_MA(WPA_SOAP, INITIALIZE, wpa_soap);
 
 	struct crypto_ec *e = sm->wpa_soap->e;
+	_rand = os_malloc(crypto_ec_prime_len(e));
 	if (crypto_get_random(_rand, crypto_ec_prime_len(e)) < 0) {
 		wpa_printf(MSG_ERROR, "SOAP: Failed to initialize AP random");
 		goto err;
@@ -3319,15 +3320,18 @@ SM_STATE(WPA_SOAP, INITIALIZE)
 		wpa_printf(MSG_ERROR, "SOAP: Failed to set bignum from AP random");
 		goto err;
 	}
+	sm->wpa_soap->q = crypto_ec_point_init(e);
 	if (crypto_ec_point_mul(e, sm->wpa_soap->g, sm->wpa_soap->b,
 		sm->wpa_soap->q)) {
 		wpa_printf(MSG_ERROR, "SOAP: Failed to calculate Q = BG.");
 		goto err;
 	}
 	sm->TimeoutCtr = 0;
+	os_free(_rand);
 	return;
 
 err:
+	os_free(_rand);
 	sm->Disconnect = TRUE;
 	return;
 }
