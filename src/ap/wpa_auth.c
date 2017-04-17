@@ -1389,7 +1389,7 @@ void soap_receive(struct wpa_soap *wpa_soap,
 
 	wpa_hexdump(MSG_DEBUG, "SOAP: P", p, p_len);
 	wpa_soap->p = crypto_ec_point_from_bin(wpa_soap->e, p);
-	if (wpa_soap->p) {
+	if (wpa_soap->p == NULL) {
 		wpa_printf(MSG_DEBUG, "SOAP: Failed to get P = AG from SOAP-M2");
 		goto free_tmp;
 	}
