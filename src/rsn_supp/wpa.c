@@ -29,6 +29,17 @@
 
 static const u8 null_rsc[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
+#ifdef CONFIG_SOAP
+u8 g_bin[] = {
+0xB7,0x0E,0x0C,0xBD,0x6B,0xB4,0xBF,0x7F,0x32,0x13,
+0x90,0xB9,0x4A,0x03,0xC1,0xD3,0x56,0xC2,0x11,0x22,
+0x34,0x32,0x80,0xD6,0x11,0x5C,0x1D,0x21,
+0xbd,0x37,0x63,0x88,0xb5,0xf7,0x23,0xfb,0x4c,0x22,
+0xdf,0xe6,0xcd,0x43,0x75,0xa0,0x5a,0x07,0x47,0x64,
+0x44,0xd5,0x81,0x99,0x85,0x00,0x7e,0x34
+};
+#endif /* CONFIG_SOAP */
+
 
 /**
  * wpa_eapol_key_send - Send WPA/RSN EAPOL-Key message
@@ -1884,18 +1895,18 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 					  const u8 *q,
 					  int q_len)
 {
-	u8 _rand[20];
+	u8 *_rand;
 	u8 *p;
 	size_t prime_len;
-	int i;
 
 	sm->e = crypto_ec_init(ec_group);
 	if (sm->e == NULL) {
 		wpa_printf(MSG_ERROR, "Initializing EC group (%d) failed", ec_group);
 		return;
 	}
+	prime_len = crypto_ec_prime_len(sm->e);
 
-	sm->g = crypto_ec_point_init(sm->e);
+	sm->g = crypto_ec_point_from_bin(sm->e, g_bin);
 	if (sm->g == NULL) {
 		wpa_printf(MSG_ERROR, "Initializing EC generator failed");
 		goto deinit_e;
@@ -1908,22 +1919,30 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 		goto deinit_g;
 	}
 
+	_rand = os_malloc(prime_len);
+	if (_rand == NULL) {
+		wpa_printf(MSG_ERROR, "Allocating memory for _rand failed");
+		goto deinit_q;
+	}
+
 	if (crypto_get_random(_rand, crypto_ec_prime_len(sm->e)) < 0) {
 		wpa_printf(MSG_ERROR, "Getting random A failed");
-		goto deinit_q;
+		goto free_rand;
 	}
 
 	sm->a = crypto_bignum_init_set(_rand, crypto_ec_prime_len(sm->e));
 	if (sm->a == NULL) {
 		wpa_printf(MSG_ERROR, "Converting random A from binary to bignum failed");
-		goto deinit_q;
+		goto free_rand;
 	}
 
+	sm->p = crypto_ec_point_init(sm->e);
 	if (crypto_ec_point_mul(sm->e, sm->g, sm->a, sm->p)) {
 		wpa_printf(MSG_ERROR, "Calculating P = AG failed");
-		goto deinit_q;
+		goto free_rand;
 	}
 
+	sm->soap_pmk_ec = crypto_ec_point_init(sm->e);
 	if (crypto_ec_point_mul(sm->e, sm->q, sm->a, sm->soap_pmk_ec)) {
 		wpa_printf(MSG_ERROR, "Calculating PMK = AQ = ABG failed");
 		goto deinit_p;
@@ -1933,12 +1952,9 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 		wpa_printf(MSG_ERROR, "Converting PMK from EC point to binary failed");
 		goto deinit_soap_pmk_ec;
 	}
-	for (i = 20; i < PMK_LEN; i++) {
-		sm->soap_pmk[i] = 0;
-	}
+
 	wpa_sm_set_pmk(sm, sm->soap_pmk, PMK_LEN, NULL, NULL);
 
-	prime_len = crypto_ec_prime_len(sm->e);
 	p = os_zalloc(2 * prime_len);
 	if (p == NULL) {
 		goto deinit_soap_pmk_ec;
@@ -1958,14 +1974,14 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 	 * TODO: resrouces are not freed yet
 	 */
 
-	return;
-
 free_p:
 	os_free(p);
 deinit_soap_pmk_ec:
 	crypto_ec_point_deinit(sm->soap_pmk_ec, 1);
 deinit_p:
 	crypto_ec_point_deinit(sm->p, 0);
+free_rand:
+	os_free(_rand);
 deinit_q:
 	crypto_ec_point_deinit(sm->q, 1);
 deinit_g:
@@ -1996,12 +2012,13 @@ int wpa_supplicant_send_soap_2_of_2(struct wpa_sm *sm, const unsigned char *dst,
 	hdr->version = 0xff;
 	hdr->type = 0xff;
 	hdr->length = host_to_be16(len - sizeof(*hdr));
-	payload = (u8*)(hdr + sizeof(*hdr));
+	payload = (u8*)(hdr + 1);
 	WPA_PUT_BE16(payload, p_len);
 	os_memcpy(payload + 2, p, p_len);
 
 	ret = wpa_sm_ether_send(sm, dst, ETH_P_EAPOL, (u8 *) hdr, len);
 
+	os_free(hdr);
 out:
 	return ret;
 }
@@ -2086,7 +2103,7 @@ int wpa_sm_rx_eapol(struct wpa_sm *sm, const u8 *src_addr,
 			goto out;
 		os_memcpy(tmp, buf, data_len);
 
-		payload = (u8*)(tmp + sizeof((*hdr)));
+		payload = (u8*)(tmp + sizeof(*hdr));
 		ec_group = payload[0];
 		q_len = WPA_GET_BE16(payload + 1);
 		q = payload + 3;
