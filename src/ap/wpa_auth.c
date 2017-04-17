@@ -3260,8 +3260,8 @@ void __wpa_send_soap(struct wpa_soap *wpa_soap,
 	 */
 	hdr->version = 0xff;
 	hdr->type = 0xff;
-	hdr->length = host_to_be16(len  - sizeof(*hdr));
-	payload = (u8*)(hdr + sizeof(*hdr));
+	hdr->length = host_to_be16(len - sizeof(*hdr));
+	payload = (u8*)(hdr + 1);
 	payload[0] = (u8)(ec_group & 0xff);
 	WPA_PUT_BE16(payload + 1, q_len);
 	os_memcpy(payload + 3, q, q_len);
