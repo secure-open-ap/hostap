@@ -1898,6 +1898,7 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 	u8 *_rand;
 	u8 *p;
 	size_t prime_len;
+	int deauth = 1;
 
 	sm->e = crypto_ec_init(ec_group);
 	if (sm->e == NULL) {
@@ -1965,10 +1966,11 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 		goto free_p;
 	}
 
-	if (wpa_supplicant_send_soap_2_of_2(sm, sm->bssid, p, 2 * prime_len)) {
+	if (wpa_supplicant_send_soap_2_of_2(sm, sm->bssid, p, 2 * prime_len) < 2 * prime_len) {
 		wpa_printf(MSG_ERROR, "Failed to send SOAP-M2");
 		goto free_p;
 	}
+	deauth = 0;
 
 	/*
 	 * TODO: resrouces are not freed yet
@@ -1988,7 +1990,8 @@ deinit_g:
 	crypto_ec_point_deinit(sm->g, 0);
 deinit_e:
 	crypto_ec_deinit(sm->e);
-	wpa_sm_deauthenticate(sm, WLAN_REASON_UNSPECIFIED);
+	if (deauth)
+		wpa_sm_deauthenticate(sm, WLAN_REASON_UNSPECIFIED);
 	return;
 }
 
