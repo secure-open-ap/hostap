@@ -1896,6 +1896,8 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 					  int q_len)
 {
 	u8 *_rand;
+	u8 *tmp;
+	int i;
 	u8 *p;
 	size_t prime_len;
 	int deauth = 1;
@@ -1949,9 +1951,16 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 		goto deinit_p;
 	}
 
-	if (crypto_ec_point_to_bin(sm->e, sm->soap_pmk_ec, NULL, sm->soap_pmk)) {
+	tmp = os_zalloc((2 * prime_len) > PMK_LEN ? (2 * prime_len) : PMK_LEN);
+	/*
+	 * Place y coordinate fils_process_auth
+	 */
+	if (crypto_ec_point_to_bin(sm->e, sm->soap_pmk_ec, tmp + prime_len, tmp)) {
 		wpa_printf(MSG_ERROR, "Converting PMK from EC point to binary failed");
 		goto deinit_soap_pmk_ec;
+	}
+	for (i = 0; i < PMK_LEN; i++) {
+		sm->soap_pmk[i] = tmp[i];
 	}
 
 	wpa_sm_set_pmk(sm, sm->soap_pmk, PMK_LEN, NULL, NULL);
