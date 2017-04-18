@@ -3362,25 +3362,36 @@ SM_STATE(WPA_SOAP, SENDSOAPM1)
 
 SM_STATE(WPA_SOAP, DERIVEPSK)
 {
+	int prime_len;
+	u8 *tmp;
 	int i;
-	SM_ENTRY_MA(WPA_SOAP, SENDSOAPM1, wpa_soap);
 
+	SM_ENTRY_MA(WPA_SOAP, DERIVEPSK, wpa_soap);
+
+	sm->wpa_soap->soap_pmk_ec = crypto_ec_point_init(sm->wpa_soap->e);
 	if (crypto_ec_point_mul(sm->wpa_soap->e, sm->wpa_soap->p, sm->wpa_soap->b, sm->wpa_soap->soap_pmk_ec)) {
 		wpa_printf(MSG_ERROR, "Failed to calculate PMK = BP = ABG");
 		goto deinit_p;
 	}
 
-	if (crypto_ec_point_to_bin(sm->wpa_soap->e, sm->wpa_soap->soap_pmk_ec, NULL, sm->wpa_soap->soap_pmk)) {
+	prime_len = crypto_ec_prime_len(sm->wpa_soap->e);
+	tmp = os_zalloc((2 * prime_len) > PMK_LEN ? (2 * prime_len) : PMK_LEN);
+	/*
+	 * Place y coordinate first
+	 */
+	if (crypto_ec_point_to_bin(sm->wpa_soap->e, sm->wpa_soap->soap_pmk_ec, tmp + prime_len, tmp)) {
 		wpa_printf(MSG_ERROR, "Failed to convert PMK EC point to binary");
-		goto deinit_p;
+		goto deinit_soap_pmk_ec;
 	}
-	for (i = crypto_ec_prime_len(sm->wpa_soap->e); i < PMK_LEN; i++) {
-		sm->wpa_soap->soap_pmk[i] = 0;
+	for (i = 0; i < PMK_LEN; i++) {
+		sm->wpa_soap->soap_pmk[i] = tmp[i];
 	}
 
 	/* Proceed WPA/WPA2-PSK 4-Way Handshake */
 	sm->AuthenticationRequest = TRUE;
 
+deinit_soap_pmk_ec:
+	crypto_ec_point_deinit(sm->wpa_soap->soap_pmk_ec, 1);
 deinit_p:
 	crypto_ec_point_deinit(sm->wpa_soap->p, 0);
 	return;
