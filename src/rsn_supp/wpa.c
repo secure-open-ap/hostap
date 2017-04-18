@@ -2075,7 +2075,7 @@ int wpa_sm_rx_eapol(struct wpa_sm *sm, const u8 *src_addr,
 
 #ifdef CONFIG_SOAP
 	if (sm->assoc_soap_ie != NULL &&
-			!(len > 2 && buf[0] == 0xff && buf[1] == 0xff)) {
+			(len > 2 && buf[0] == 0xff && buf[1] == 0xff)) {
 				wpa_printf(MSG_DEBUG, "We are receiving SOAP-M1. Bypassing MIC check");
 				mic_len = 0;
 				keyhdrlen = 0;
