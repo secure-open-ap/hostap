@@ -2030,9 +2030,8 @@ SM_STATE(WPA_PTK, INITPSK)
 		wpa_printf(MSG_DEBUG, "We are using SOAP. Get PMK from SOAP authenticator instead");
 		os_memcpy(sm->PMK, sm->wpa_soap->soap_pmk, PMK_LEN);
 		sm->pmk_len = PMK_LEN;
-		sm->req_replay_counter_used = 0;
-		return;
 	}
+	else
 #endif /* CONFIG_SOAP */
 	if (psk) {
 		os_memcpy(sm->PMK, psk, PMK_LEN);
@@ -2511,6 +2510,14 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 	 * WPA-PSK: iterate through possible PSKs and select the one matching
 	 * the packet */
 	for (;;) {
+#ifdef CONFIG_SOAP
+		if (sm->wpa_soap && sm->wpa_soap->sta_use_soap) {
+			wpa_printf(MSG_DEBUG, "We are using SOAP. Get PMK from SOAP authenticator instead");
+			pmk = sm->PMK;
+			pmk_len = sm->pmk_len;
+		}
+		else
+#endif /* CONFIG_SOAP */
 		if (wpa_key_mgmt_wpa_psk(sm->wpa_key_mgmt)) {
 			pmk = wpa_auth_get_psk(sm->wpa_auth, sm->addr,
 					       sm->p2p_dev_addr, pmk);
