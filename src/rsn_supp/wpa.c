@@ -1896,8 +1896,11 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 					  int q_len)
 {
 	u8 *_rand;
+	u8 *tmp;
+	int i;
 	u8 *p;
 	size_t prime_len;
+	int deauth = 1;
 
 	sm->e = crypto_ec_init(ec_group);
 	if (sm->e == NULL) {
@@ -1948,9 +1951,16 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 		goto deinit_p;
 	}
 
-	if (crypto_ec_point_to_bin(sm->e, sm->soap_pmk_ec, NULL, sm->soap_pmk)) {
+	tmp = os_zalloc((2 * prime_len) > PMK_LEN ? (2 * prime_len) : PMK_LEN);
+	/*
+	 * Place y coordinate fils_process_auth
+	 */
+	if (crypto_ec_point_to_bin(sm->e, sm->soap_pmk_ec, tmp + prime_len, tmp)) {
 		wpa_printf(MSG_ERROR, "Converting PMK from EC point to binary failed");
 		goto deinit_soap_pmk_ec;
+	}
+	for (i = 0; i < PMK_LEN; i++) {
+		sm->soap_pmk[i] = tmp[i];
 	}
 
 	wpa_sm_set_pmk(sm, sm->soap_pmk, PMK_LEN, NULL, NULL);
@@ -1965,10 +1975,11 @@ static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
 		goto free_p;
 	}
 
-	if (wpa_supplicant_send_soap_2_of_2(sm, sm->bssid, p, 2 * prime_len)) {
+	if (wpa_supplicant_send_soap_2_of_2(sm, sm->bssid, p, 2 * prime_len) < 2 * prime_len) {
 		wpa_printf(MSG_ERROR, "Failed to send SOAP-M2");
 		goto free_p;
 	}
+	deauth = 0;
 
 	/*
 	 * TODO: resrouces are not freed yet
@@ -1988,7 +1999,8 @@ deinit_g:
 	crypto_ec_point_deinit(sm->g, 0);
 deinit_e:
 	crypto_ec_deinit(sm->e);
-	wpa_sm_deauthenticate(sm, WLAN_REASON_UNSPECIFIED);
+	if (deauth)
+		wpa_sm_deauthenticate(sm, WLAN_REASON_UNSPECIFIED);
 	return;
 }
 
@@ -2063,7 +2075,7 @@ int wpa_sm_rx_eapol(struct wpa_sm *sm, const u8 *src_addr,
 
 #ifdef CONFIG_SOAP
 	if (sm->assoc_soap_ie != NULL &&
-			!(len > 2 && buf[0] == 0xff && buf[1] == 0xff)) {
+			(len > 2 && buf[0] == 0xff && buf[1] == 0xff)) {
 				wpa_printf(MSG_DEBUG, "We are receiving SOAP-M1. Bypassing MIC check");
 				mic_len = 0;
 				keyhdrlen = 0;
