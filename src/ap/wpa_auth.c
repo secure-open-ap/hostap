@@ -1389,7 +1389,7 @@ void soap_receive(struct wpa_soap *wpa_soap,
 
 	wpa_hexdump(MSG_DEBUG, "SOAP: P", p, p_len);
 	wpa_soap->p = crypto_ec_point_from_bin(wpa_soap->e, p);
-	if (wpa_soap->p) {
+	if (wpa_soap->p == NULL) {
 		wpa_printf(MSG_DEBUG, "SOAP: Failed to get P = AG from SOAP-M2");
 		goto free_tmp;
 	}
@@ -2030,9 +2030,8 @@ SM_STATE(WPA_PTK, INITPSK)
 		wpa_printf(MSG_DEBUG, "We are using SOAP. Get PMK from SOAP authenticator instead");
 		os_memcpy(sm->PMK, sm->wpa_soap->soap_pmk, PMK_LEN);
 		sm->pmk_len = PMK_LEN;
-		sm->req_replay_counter_used = 0;
-		return;
 	}
+	else
 #endif /* CONFIG_SOAP */
 	if (psk) {
 		os_memcpy(sm->PMK, psk, PMK_LEN);
@@ -2511,6 +2510,14 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 	 * WPA-PSK: iterate through possible PSKs and select the one matching
 	 * the packet */
 	for (;;) {
+#ifdef CONFIG_SOAP
+		if (sm->wpa_soap && sm->wpa_soap->sta_use_soap) {
+			wpa_printf(MSG_DEBUG, "We are using SOAP. Get PMK from SOAP authenticator instead");
+			pmk = sm->PMK;
+			pmk_len = sm->pmk_len;
+		}
+		else
+#endif /* CONFIG_SOAP */
 		if (wpa_key_mgmt_wpa_psk(sm->wpa_key_mgmt)) {
 			pmk = wpa_auth_get_psk(sm->wpa_auth, sm->addr,
 					       sm->p2p_dev_addr, pmk);
@@ -3362,25 +3369,36 @@ SM_STATE(WPA_SOAP, SENDSOAPM1)
 
 SM_STATE(WPA_SOAP, DERIVEPSK)
 {
+	int prime_len;
+	u8 *tmp;
 	int i;
-	SM_ENTRY_MA(WPA_SOAP, SENDSOAPM1, wpa_soap);
 
+	SM_ENTRY_MA(WPA_SOAP, DERIVEPSK, wpa_soap);
+
+	sm->wpa_soap->soap_pmk_ec = crypto_ec_point_init(sm->wpa_soap->e);
 	if (crypto_ec_point_mul(sm->wpa_soap->e, sm->wpa_soap->p, sm->wpa_soap->b, sm->wpa_soap->soap_pmk_ec)) {
 		wpa_printf(MSG_ERROR, "Failed to calculate PMK = BP = ABG");
 		goto deinit_p;
 	}
 
-	if (crypto_ec_point_to_bin(sm->wpa_soap->e, sm->wpa_soap->soap_pmk_ec, NULL, sm->wpa_soap->soap_pmk)) {
+	prime_len = crypto_ec_prime_len(sm->wpa_soap->e);
+	tmp = os_zalloc((2 * prime_len) > PMK_LEN ? (2 * prime_len) : PMK_LEN);
+	/*
+	 * Place y coordinate first
+	 */
+	if (crypto_ec_point_to_bin(sm->wpa_soap->e, sm->wpa_soap->soap_pmk_ec, tmp + prime_len, tmp)) {
 		wpa_printf(MSG_ERROR, "Failed to convert PMK EC point to binary");
-		goto deinit_p;
+		goto deinit_soap_pmk_ec;
 	}
-	for (i = crypto_ec_prime_len(sm->wpa_soap->e); i < PMK_LEN; i++) {
-		sm->wpa_soap->soap_pmk[i] = 0;
+	for (i = 0; i < PMK_LEN; i++) {
+		sm->wpa_soap->soap_pmk[i] = tmp[i];
 	}
 
 	/* Proceed WPA/WPA2-PSK 4-Way Handshake */
 	sm->AuthenticationRequest = TRUE;
 
+deinit_soap_pmk_ec:
+	crypto_ec_point_deinit(sm->wpa_soap->soap_pmk_ec, 1);
 deinit_p:
 	crypto_ec_point_deinit(sm->wpa_soap->p, 0);
 	return;
