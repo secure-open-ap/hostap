@@ -1388,8 +1388,8 @@ void soap_receive(struct wpa_soap *wpa_soap,
 	p = payload + 2;
 
 	wpa_hexdump(MSG_DEBUG, "SOAP: P", p, p_len);
-	wpa_soap->p = crypto_ec_point_from_bin(wpa_soap->e, p);
-	if (wpa_soap->p == NULL) {
+	wpa_soap->pub_client = crypto_ec_point_from_bin(wpa_soap->ec, p);
+	if (wpa_soap->pub_client == NULL) {
 		wpa_printf(MSG_DEBUG, "SOAP: Failed to get P = AG from SOAP-M2");
 		goto free_tmp;
 	}
@@ -2028,7 +2028,7 @@ SM_STATE(WPA_PTK, INITPSK)
 #ifdef CONFIG_SOAP
 	if (sm->wpa_soap && sm->wpa_soap->sta_use_soap) {
 		wpa_printf(MSG_DEBUG, "We are using SOAP. Get PMK from SOAP authenticator instead");
-		os_memcpy(sm->PMK, sm->wpa_soap->soap_pmk, PMK_LEN);
+		os_memcpy(sm->PMK, sm->wpa_soap->psk, PMK_LEN);
 		sm->pmk_len = PMK_LEN;
 	}
 	else
@@ -3316,20 +3316,20 @@ SM_STATE(WPA_SOAP, INITIALIZE)
 	u8 *_rand;
 	SM_ENTRY_MA(WPA_SOAP, INITIALIZE, wpa_soap);
 
-	struct crypto_ec *e = sm->wpa_soap->e;
+	struct crypto_ec *e = sm->wpa_soap->ec;
 	_rand = os_malloc(crypto_ec_prime_len(e));
 	if (crypto_get_random(_rand, crypto_ec_prime_len(e)) < 0) {
 		wpa_printf(MSG_ERROR, "SOAP: Failed to initialize AP random");
 		goto err;
 	}
-	sm->wpa_soap->b = crypto_bignum_init_set(_rand, crypto_ec_prime_len(e));
-	if (sm->wpa_soap->b == NULL) {
+	sm->wpa_soap->bignum = crypto_bignum_init_set(_rand, crypto_ec_prime_len(e));
+	if (sm->wpa_soap->bignum == NULL) {
 		wpa_printf(MSG_ERROR, "SOAP: Failed to set bignum from AP random");
 		goto err;
 	}
-	sm->wpa_soap->q = crypto_ec_point_init(e);
-	if (crypto_ec_point_mul(e, sm->wpa_soap->g, sm->wpa_soap->b,
-		sm->wpa_soap->q)) {
+	sm->wpa_soap->pub_ap = crypto_ec_point_init(e);
+	if (crypto_ec_point_mul(e, sm->wpa_soap->generator, sm->wpa_soap->bignum,
+		sm->wpa_soap->pub_ap)) {
 		wpa_printf(MSG_ERROR, "SOAP: Failed to calculate Q = BG.");
 		goto err;
 	}
@@ -3357,9 +3357,9 @@ SM_STATE(WPA_SOAP, SENDSOAPM1)
 
 	wpa_printf(MSG_DEBUG, "Sending 1/2 msg of SOAP 2-Way Handshake");
 	// 26: NID_secp224r1
-	prime_len = crypto_ec_prime_len(sm->wpa_soap->e);
+	prime_len = crypto_ec_prime_len(sm->wpa_soap->ec);
 	q = os_zalloc(2 * prime_len);
-	if (crypto_ec_point_to_bin(sm->wpa_soap->e, sm->wpa_soap->q, q, q + prime_len)) {
+	if (crypto_ec_point_to_bin(sm->wpa_soap->ec, sm->wpa_soap->pub_ap, q, q + prime_len)) {
 		wpa_printf(MSG_ERROR, "SOAP: Failed to convert crypto_ec_point Q to binary.");
 		return;
 	}
@@ -3375,32 +3375,32 @@ SM_STATE(WPA_SOAP, DERIVEPSK)
 
 	SM_ENTRY_MA(WPA_SOAP, DERIVEPSK, wpa_soap);
 
-	sm->wpa_soap->soap_pmk_ec = crypto_ec_point_init(sm->wpa_soap->e);
-	if (crypto_ec_point_mul(sm->wpa_soap->e, sm->wpa_soap->p, sm->wpa_soap->b, sm->wpa_soap->soap_pmk_ec)) {
+	sm->wpa_soap->shared_ec = crypto_ec_point_init(sm->wpa_soap->ec);
+	if (crypto_ec_point_mul(sm->wpa_soap->ec, sm->wpa_soap->pub_client, sm->wpa_soap->bignum, sm->wpa_soap->shared_ec)) {
 		wpa_printf(MSG_ERROR, "Failed to calculate PMK = BP = ABG");
 		goto deinit_p;
 	}
 
-	prime_len = crypto_ec_prime_len(sm->wpa_soap->e);
+	prime_len = crypto_ec_prime_len(sm->wpa_soap->ec);
 	tmp = os_zalloc((2 * prime_len) > PMK_LEN ? (2 * prime_len) : PMK_LEN);
 	/*
 	 * Place y coordinate first
 	 */
-	if (crypto_ec_point_to_bin(sm->wpa_soap->e, sm->wpa_soap->soap_pmk_ec, tmp + prime_len, tmp)) {
+	if (crypto_ec_point_to_bin(sm->wpa_soap->ec, sm->wpa_soap->shared_ec, tmp + prime_len, tmp)) {
 		wpa_printf(MSG_ERROR, "Failed to convert PMK EC point to binary");
 		goto deinit_soap_pmk_ec;
 	}
 	for (i = 0; i < PMK_LEN; i++) {
-		sm->wpa_soap->soap_pmk[i] = tmp[i];
+		sm->wpa_soap->psk[i] = tmp[i];
 	}
 
 	/* Proceed WPA/WPA2-PSK 4-Way Handshake */
 	sm->AuthenticationRequest = TRUE;
 
 deinit_soap_pmk_ec:
-	crypto_ec_point_deinit(sm->wpa_soap->soap_pmk_ec, 1);
+	crypto_ec_point_deinit(sm->wpa_soap->shared_ec, 1);
 deinit_p:
-	crypto_ec_point_deinit(sm->wpa_soap->p, 0);
+	crypto_ec_point_deinit(sm->wpa_soap->pub_client, 0);
 	return;
 }
 

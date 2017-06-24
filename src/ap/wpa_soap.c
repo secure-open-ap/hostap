@@ -48,14 +48,14 @@ struct wpa_soap * soap_init(const u8 *addr,
    * 26: NID_secp224r1
    * TODO: Need to negotiate gorup between STA and AP?
    */
-  wpa_soap->e = crypto_ec_init(26);
-  if (wpa_soap->e == NULL) {
+  wpa_soap->ec = crypto_ec_init(26);
+  if (wpa_soap->ec == NULL) {
     wpa_printf(MSG_ERROR, "Initializing EC group (%d) for SOAP failed", 26);
     goto free_wpa_soap;
   }
 
-  wpa_soap->g = crypto_ec_point_from_bin(wpa_soap->e, g_bin);
-  if (wpa_soap->g == NULL) {
+  wpa_soap->generator = crypto_ec_point_from_bin(wpa_soap->ec, g_bin);
+  if (wpa_soap->generator == NULL) {
     wpa_printf(MSG_ERROR, "Initializing EC generator for SOAP failed");
     goto deinit_e;
   }
@@ -63,7 +63,7 @@ struct wpa_soap * soap_init(const u8 *addr,
   return wpa_soap;
 
 deinit_e:
-  crypto_ec_deinit(wpa_soap->e);
+  crypto_ec_deinit(wpa_soap->ec);
 free_wpa_soap:
   os_free(wpa_soap);
   return NULL;

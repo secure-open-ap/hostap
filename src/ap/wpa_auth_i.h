@@ -206,13 +206,13 @@ struct wpa_ft_pmk_cache;
 struct wpa_soap {
 	int sta_use_soap;
 	// const struct dh_group *dh_group;
-	struct crypto_ec *e;
-	struct crypto_ec_point *g;
-	struct crypto_bignum *b;
-	struct crypto_ec_point *q;
-	struct crypto_ec_point *p;
-	struct crypto_ec_point *soap_pmk_ec;
-	u8 soap_pmk[PMK_LEN];
+	struct crypto_ec *ec;
+	struct crypto_ec_point *generator;
+	struct crypto_bignum *bignum;
+	struct crypto_ec_point *pub_ap;
+	struct crypto_ec_point *pub_client;
+	struct crypto_ec_point *shared_ec;
+	u8 psk[PMK_LEN];
 
 	struct wpa_soap_callbacks cb;
 
