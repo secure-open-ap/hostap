@@ -907,6 +907,10 @@ struct wpa_driver_associate_params {
 	 * fils_nonces_len: Length of fils_nonce in bytes
 	 */
 	size_t fils_nonces_len;
+
+#ifdef CONFIG_SOAP
+	unsigned int soap;
+#endif /* CONFIG_SOAP */
 };
 
 enum hide_ssid {
@@ -2368,6 +2372,12 @@ struct wpa_driver_ops {
 	int (*hapd_send_eapol)(void *priv, const u8 *addr, const u8 *data,
 			       size_t data_len, int encrypt,
 			       const u8 *own_addr, u32 flags);
+
+#ifdef CONFIG_SOAP
+	int (*hapd_send_soap)(void *priv, const u8 *addr, const u8 *data,
+			       size_t data_len, int encrypt,
+			       const u8 *own_addr, u32 flags);
+#endif /* CONFIG_SOAP */
 
 	/**
 	 * sta_deauth - Deauthenticate a station (AP only)

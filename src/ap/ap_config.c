@@ -60,6 +60,11 @@ void hostapd_config_defaults_bss(struct hostapd_bss_config *bss)
 	bss->wpa_group = WPA_CIPHER_TKIP;
 	bss->rsn_pairwise = 0;
 
+	#ifdef CONFIG_SOAP
+	bss->soap = 0;
+	wpa_printf(MSG_DEBUG, "Initializing SOAP capability (%d) of AP", bss->soap);
+	#endif /* CONFIG_SOAP */
+
 	bss->max_num_sta = MAX_STA_COUNT;
 
 	bss->dtim_period = 2;

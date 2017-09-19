@@ -449,6 +449,18 @@ void wpas_notify_bss_rsnie_changed(struct wpa_supplicant *wpa_s,
 }
 
 
+#ifdef CONFIG_SOAP
+void wpas_notify_bss_soapie_changed(struct wpa_supplicant *wpa_s,
+				   unsigned int id)
+{
+	if (wpa_s->p2p_mgmt)
+		return;
+
+	wpas_dbus_bss_signal_prop_changed(wpa_s, WPAS_DBUS_BSS_PROP_SOAP, id);
+}
+#endif /* CONFIG_SOAP */
+
+
 void wpas_notify_bss_wps_changed(struct wpa_supplicant *wpa_s,
 				 unsigned int id)
 {

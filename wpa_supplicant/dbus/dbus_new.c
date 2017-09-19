@@ -2069,6 +2069,11 @@ void wpas_dbus_bss_signal_prop_changed(struct wpa_supplicant *wpa_s,
 	case WPAS_DBUS_BSS_PROP_AGE:
 		prop = "Age";
 		break;
+#ifdef CONFIG_SOAP
+	case WPAS_DBUS_BSS_PROP_SOAP:
+		prop = "SOAP";
+		break;
+#endif /* CONFIG_SOAP */
 	default:
 		wpa_printf(MSG_ERROR, "dbus: %s: Unknown Property value %d",
 			   __func__, property);
@@ -2572,6 +2577,17 @@ static const struct wpa_dbus_property_desc wpas_dbus_bss_properties[] = {
 	  NULL,
 	  NULL
 	},
+#ifdef CONFIG_SOAP
+	/* TODO: Currently, SOAP is boolean (support or not)
+	 * SOAP with open system, need to be similar with
+	  * something like WPA, RSN
+	*/
+	{ "SOAP", WPAS_DBUS_NEW_IFACE_BSS, "n",
+	  wpas_dbus_getter_bss_soap,
+		NULL,
+		NULL
+	},
+#endif /* CONFIG_SOAP */
 	{ NULL, NULL, NULL, NULL, NULL, NULL }
 };
 

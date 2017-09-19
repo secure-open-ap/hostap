@@ -60,6 +60,10 @@ static void wpa_group_put(struct wpa_authenticator *wpa_auth,
 			  struct wpa_group *group);
 static u8 * ieee80211w_kde_add(struct wpa_state_machine *sm, u8 *pos);
 
+#ifdef CONFIG_SOAP
+static void wpa_send_soap_timeout(void *eloop_ctx, void *timeout_ctx);
+#endif /* CONFIG_SOAP */
+
 static const u32 dot11RSNAConfigGroupUpdateCount = 4;
 static const u32 dot11RSNAConfigPairwiseUpdateCount = 4;
 static const u32 eapol_key_timeout_first = 100; /* ms */
@@ -641,6 +645,16 @@ int wpa_auth_sta_associated(struct wpa_authenticator *wpa_auth,
 	if (wpa_sm_step(sm) == 1)
 		return 1; /* should not really happen */
 	sm->Init = FALSE;
+#ifdef CONFIG_SOAP
+	/*
+	 * Skip sm->AuthenticationRequest if STA wants to use SOAP
+	 * it is done after SOAP Handshake finishes
+	 */
+	if (sm->wpa_soap->sta_use_soap) {
+		wpa_printf(MSG_DEBUG, "STA wants to use SOAP. Defer WPA_PTK state machine");
+		return wpa_sm_step(sm);
+	}
+#endif /* CONFIG_SOAP */
 	sm->AuthenticationRequest = TRUE;
 	return wpa_sm_step(sm);
 }
@@ -1352,6 +1366,44 @@ continue_processing:
 }
 
 
+#ifdef CONFIG_SOAP
+void soap_receive(struct wpa_soap *wpa_soap,
+		 struct wpa_state_machine *sm,
+		 u8 *data, size_t data_len)
+{
+	struct ieee802_1x_hdr *hdr;
+	u8 *tmp = NULL;
+	u8 *payload;
+	u8 *p;
+	int p_len;
+
+	tmp = os_malloc(data_len);
+	if (tmp == NULL) {
+		goto out;
+	}
+	os_memcpy(tmp, data, data_len);
+
+	payload = (u8*)(tmp + sizeof(*hdr));
+	p_len = WPA_GET_BE16(payload);
+	p = payload + 2;
+
+	wpa_hexdump(MSG_DEBUG, "SOAP: P", p, p_len);
+	wpa_soap->pub_client = crypto_ec_point_from_bin(wpa_soap->ec, p);
+	if (wpa_soap->pub_client == NULL) {
+		wpa_printf(MSG_DEBUG, "SOAP: Failed to get P = AG from SOAP-M2");
+		goto free_tmp;
+	}
+	sm->SOAPKeyReceived = TRUE;
+	wpa_sm_step(sm);
+
+free_tmp:
+	os_free(tmp);
+out:
+	return;
+}
+#endif /* CONFIG_SOAP */
+
+
 static int wpa_gmk_to_gtk(const u8 *gmk, const char *label, const u8 *addr,
 			  const u8 *gnonce, u8 *gtk, size_t gtk_len)
 {
@@ -1973,6 +2025,14 @@ SM_STATE(WPA_PTK, INITPSK)
 	const u8 *psk;
 	SM_ENTRY_MA(WPA_PTK, INITPSK, wpa_ptk);
 	psk = wpa_auth_get_psk(sm->wpa_auth, sm->addr, sm->p2p_dev_addr, NULL);
+#ifdef CONFIG_SOAP
+	if (sm->wpa_soap && sm->wpa_soap->sta_use_soap) {
+		wpa_printf(MSG_DEBUG, "We are using SOAP. Get PMK from SOAP authenticator instead");
+		os_memcpy(sm->PMK, sm->wpa_soap->psk, PMK_LEN);
+		sm->pmk_len = PMK_LEN;
+	}
+	else
+#endif /* CONFIG_SOAP */
 	if (psk) {
 		os_memcpy(sm->PMK, psk, PMK_LEN);
 		sm->pmk_len = PMK_LEN;
@@ -2450,6 +2510,14 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 	 * WPA-PSK: iterate through possible PSKs and select the one matching
 	 * the packet */
 	for (;;) {
+#ifdef CONFIG_SOAP
+		if (sm->wpa_soap && sm->wpa_soap->sta_use_soap) {
+			wpa_printf(MSG_DEBUG, "We are using SOAP. Get PMK from SOAP authenticator instead");
+			pmk = sm->PMK;
+			pmk_len = sm->pmk_len;
+		}
+		else
+#endif /* CONFIG_SOAP */
 		if (wpa_key_mgmt_wpa_psk(sm->wpa_key_mgmt)) {
 			pmk = wpa_auth_get_psk(sm->wpa_auth, sm->addr,
 					       sm->p2p_dev_addr, pmk);
@@ -3160,6 +3228,218 @@ SM_STEP(WPA_PTK_GROUP)
 }
 
 
+#ifdef CONFIG_SOAP
+static inline int
+wpa_soap_send_soap(struct wpa_soap * wpa_soap, const u8 *addr,
+		    const u8 *data, size_t data_len, int encrypt)
+{
+	if (wpa_soap->cb.send_soap == NULL)
+		return -1;
+	return wpa_soap->cb.send_soap(wpa_soap->cb.ctx, addr, data, data_len, encrypt);
+}
+
+static void wpa_send_soap_timeout(void *eloop_ctx, void *timeout_ctx)
+{
+	// struct wpa_soap *wpa_soap = eloop_ctx;
+	struct wpa_state_machine *sm = timeout_ctx;
+
+	wpa_printf(MSG_DEBUG, "SOAP-Key timeout");
+	sm->TimeoutEvt = TRUE;
+	wpa_sm_step(sm);
+}
+
+void __wpa_send_soap(struct wpa_soap *wpa_soap,
+			   struct wpa_state_machine *sm, int ec_group,
+			   const u8 *q, int q_len, int encr)
+{
+	struct ieee802_1x_hdr *hdr;
+	u8 *payload;
+	size_t len;
+
+	wpa_printf(MSG_DEBUG, "SOAP: Send SOAP(version=%d encr=%d)", 0xff, encr);
+
+	len = sizeof(struct ieee802_1x_hdr) + 3 + q_len;
+	hdr = os_zalloc(len);
+	if (hdr == NULL)
+		return;
+	/*
+	 * NOTE and FIXME: This is temporary value. Not defiend in IEEE 802.1X
+	 */
+	hdr->version = 0xff;
+	hdr->type = 0xff;
+	hdr->length = host_to_be16(len - sizeof(*hdr));
+	payload = (u8*)(hdr + 1);
+	payload[0] = (u8)(ec_group & 0xff);
+	WPA_PUT_BE16(payload + 1, q_len);
+	os_memcpy(payload + 3, q, q_len);
+
+	wpa_soap_send_soap(wpa_soap, sm->addr, (u8 *) hdr, len, encr);
+	os_free(hdr);
+}
+
+static void wpa_send_soap(struct wpa_soap *wpa_soap,
+			   struct wpa_state_machine *sm, int ec_group,
+			   const u8 *q, int q_len, int encr)
+{
+	int timeout_ms;
+	int ctr;
+
+	if (sm == NULL)
+		return;
+
+	__wpa_send_soap(wpa_soap, sm, ec_group, q, q_len, encr);
+
+	ctr = sm->TimeoutCtr;
+	if (ctr == 1)
+		timeout_ms = eapol_key_timeout_first;
+	else
+		timeout_ms = eapol_key_timeout_subseq;
+	wpa_printf(MSG_DEBUG, "SOAP: Use SOAP-Key timeout of %u ms (retry "
+		   "counter %d)", timeout_ms, ctr);
+	eloop_register_timeout(timeout_ms / 1000, (timeout_ms % 1000) * 1000,
+			       wpa_send_soap_timeout, wpa_soap, sm);
+}
+
+
+/*
+ * NOTE
+ * SM_STEP(SOAP): defines sm_SOAP_Step(sm)
+ * SM_STEP_RUN(SOAP): calls sm_SOAP_Step(sm) (SM_STEP(SOAP))
+ *                    (execute state machine itself)
+ * SM_STATE(SOAP, STATE): defines static void sm_SOAP_STATE_Enter(sm, int)
+ * SM_ENTER: calls sm_SOAP_STATE_Enter(sm, 0)
+ * SM_ENTRY_MA(SOAP, STATE, soap): sets the current state
+ *                                 (sm->soap_state = SOAP_STATE)
+ */
+SM_STATE(WPA_SOAP, INITIALIZE)
+{
+	u8 *_rand;
+	SM_ENTRY_MA(WPA_SOAP, INITIALIZE, wpa_soap);
+
+	struct crypto_ec *e = sm->wpa_soap->ec;
+	_rand = os_malloc(crypto_ec_prime_len(e));
+	if (crypto_get_random(_rand, crypto_ec_prime_len(e)) < 0) {
+		wpa_printf(MSG_ERROR, "SOAP: Failed to initialize AP random");
+		goto err;
+	}
+	sm->wpa_soap->bignum = crypto_bignum_init_set(_rand, crypto_ec_prime_len(e));
+	if (sm->wpa_soap->bignum == NULL) {
+		wpa_printf(MSG_ERROR, "SOAP: Failed to set bignum from AP random");
+		goto err;
+	}
+	sm->wpa_soap->pub_ap = crypto_ec_point_init(e);
+	if (crypto_ec_point_mul(e, sm->wpa_soap->generator, sm->wpa_soap->bignum,
+		sm->wpa_soap->pub_ap)) {
+		wpa_printf(MSG_ERROR, "SOAP: Failed to calculate Q = BG.");
+		goto err;
+	}
+	sm->TimeoutCtr = 0;
+	os_free(_rand);
+	return;
+
+err:
+	os_free(_rand);
+	sm->Disconnect = TRUE;
+	return;
+}
+
+SM_STATE(WPA_SOAP, SENDSOAPM1)
+{
+	u8 *q;
+	size_t prime_len;
+
+	SM_ENTRY_MA(WPA_SOAP, SENDSOAPM1, wpa_soap);
+	sm->TimeoutEvt = FALSE;
+	sm->TimeoutCtr++;
+	if (sm->TimeoutCtr > (int)dot11RSNAConfigPairwiseUpdateCount) {
+		return;
+	}
+
+	wpa_printf(MSG_DEBUG, "Sending 1/2 msg of SOAP 2-Way Handshake");
+	// 26: NID_secp224r1
+	prime_len = crypto_ec_prime_len(sm->wpa_soap->ec);
+	q = os_zalloc(2 * prime_len);
+	if (crypto_ec_point_to_bin(sm->wpa_soap->ec, sm->wpa_soap->pub_ap, q, q + prime_len)) {
+		wpa_printf(MSG_ERROR, "SOAP: Failed to convert crypto_ec_point Q to binary.");
+		return;
+	}
+	wpa_send_soap(sm->wpa_soap, sm, 26, q, 2 * prime_len, 0);
+	os_free(q);
+}
+
+SM_STATE(WPA_SOAP, DERIVEPSK)
+{
+	int prime_len;
+	u8 *tmp;
+	int i;
+
+	SM_ENTRY_MA(WPA_SOAP, DERIVEPSK, wpa_soap);
+
+	sm->wpa_soap->shared_ec = crypto_ec_point_init(sm->wpa_soap->ec);
+	if (crypto_ec_point_mul(sm->wpa_soap->ec, sm->wpa_soap->pub_client, sm->wpa_soap->bignum, sm->wpa_soap->shared_ec)) {
+		wpa_printf(MSG_ERROR, "Failed to calculate PMK = BP = ABG");
+		goto deinit_p;
+	}
+
+	prime_len = crypto_ec_prime_len(sm->wpa_soap->ec);
+	tmp = os_zalloc((2 * prime_len) > PMK_LEN ? (2 * prime_len) : PMK_LEN);
+	/*
+	 * Place y coordinate first
+	 */
+	if (crypto_ec_point_to_bin(sm->wpa_soap->ec, sm->wpa_soap->shared_ec, tmp + prime_len, tmp)) {
+		wpa_printf(MSG_ERROR, "Failed to convert PMK EC point to binary");
+		goto deinit_soap_pmk_ec;
+	}
+	for (i = 0; i < PMK_LEN; i++) {
+		sm->wpa_soap->psk[i] = tmp[i];
+	}
+
+	/* Proceed WPA/WPA2-PSK 4-Way Handshake */
+	sm->AuthenticationRequest = TRUE;
+
+deinit_soap_pmk_ec:
+	crypto_ec_point_deinit(sm->wpa_soap->shared_ec, 1);
+deinit_p:
+	crypto_ec_point_deinit(sm->wpa_soap->pub_client, 0);
+	return;
+}
+
+SM_STATE(WPA_SOAP, DONE)
+{
+	SM_ENTRY_MA(WPA_SOAP, DONE, wpa_soap);
+}
+
+SM_STEP(WPA_SOAP)
+{
+	if (sm->Init)
+		SM_ENTER(WPA_SOAP, INITIALIZE);
+	else switch (sm->wpa_soap_state) {
+		case WPA_SOAP_UNINITIALIZED:
+			break;
+		case WPA_SOAP_INITIALIZE:
+			SM_ENTER(WPA_SOAP, SENDSOAPM1);
+			break;
+		case WPA_SOAP_SENDSOAPM1:
+			if (sm->SOAPKeyReceived)
+				SM_ENTER(WPA_SOAP, DERIVEPSK);
+			else if (sm->TimeoutCtr > (int) dot11RSNAConfigPairwiseUpdateCount) {
+				/*
+				 * NOTE: WPA_PTK sm seems to re-initialize itself
+				 */
+				SM_ENTER(WPA_SOAP, INITIALIZE);
+			} else if (sm->TimeoutEvt)
+				SM_ENTER(WPA_SOAP, SENDSOAPM1);
+			break;
+		case WPA_SOAP_DERIVEPSK:
+			SM_ENTER(WPA_SOAP, DONE);
+			break;
+		case WPA_SOAP_DONE:
+			break;
+	}
+}
+#endif /* CONFIG_SOAP */
+
+
 static int wpa_gtk_update(struct wpa_authenticator *wpa_auth,
 			  struct wpa_group *group)
 {
@@ -3479,6 +3759,14 @@ static int wpa_sm_step(struct wpa_state_machine *sm)
 		sm->changed = FALSE;
 		sm->wpa_auth->group->changed = FALSE;
 
+#ifdef CONFIG_SOAP
+		if (sm->wpa_soap->sta_use_soap) {
+			wpa_printf(MSG_DEBUG, "Running WPA_SOAP state machine");
+			SM_STEP_RUN(WPA_SOAP);
+			if (sm->pending_deinit)
+				break;
+		}
+#endif /* CONFIG_SOAP */
 		SM_STEP_RUN(WPA_PTK);
 		if (sm->pending_deinit)
 			break;

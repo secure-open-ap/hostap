@@ -4565,6 +4565,73 @@ static int wpa_driver_nl80211_hapd_send_eapol(
 }
 
 
+#ifdef CONFIG_SOAP
+static int wpa_driver_nl80211_hapd_send_soap(
+	void *priv, const u8 *addr, const u8 *data,
+	size_t data_len, int encrypt, const u8 *own_addr, u32 flags)
+{
+	struct i802_bss *bss = priv;
+	struct wpa_driver_nl80211_data *drv = bss->drv;
+	struct ieee80211_hdr *hdr;
+	size_t len;
+	u8 *pos;
+	int res;
+	int qos = flags & WPA_STA_WMM;
+
+	if (drv->device_ap_sme || !drv->use_monitor)
+		return nl80211_send_eapol_data(bss, addr, data, data_len);
+
+	len = sizeof(*hdr) + (qos ? 2 : 0) + sizeof(rfc1042_header) + 2 +
+		data_len;
+	hdr = os_zalloc(len);
+	if (hdr == NULL) {
+		wpa_printf(MSG_INFO, "nl80211: Failed to allocate SOAP buffer(len=%lu)",
+			   (unsigned long) len);
+		return -1;
+	}
+
+	hdr->frame_control =
+		IEEE80211_FC(WLAN_FC_TYPE_DATA, WLAN_FC_STYPE_DATA);
+	hdr->frame_control |= host_to_le16(WLAN_FC_FROMDS);
+	if (encrypt)
+		hdr->frame_control |= host_to_le16(WLAN_FC_ISWEP);
+	if (qos) {
+		hdr->frame_control |=
+			host_to_le16(WLAN_FC_STYPE_QOS_DATA << 4);
+	}
+
+	memcpy(hdr->IEEE80211_DA_FROMDS, addr, ETH_ALEN);
+	memcpy(hdr->IEEE80211_BSSID_FROMDS, own_addr, ETH_ALEN);
+	memcpy(hdr->IEEE80211_SA_FROMDS, own_addr, ETH_ALEN);
+	pos = (u8 *) (hdr + 1);
+
+	if (qos) {
+		/* Set highest priority in QoS header */
+		pos[0] = 7;
+		pos[1] = 0;
+		pos += 2;
+	}
+
+	memcpy(pos, rfc1042_header, sizeof(rfc1042_header));
+	pos += sizeof(rfc1042_header);
+	WPA_PUT_BE16(pos, ETH_P_PAE);
+	pos += 2;
+	memcpy(pos, data, data_len);
+
+	res = wpa_driver_nl80211_send_frame(bss, (u8 *) hdr, len, encrypt, 0,
+					    0, 0, 0, 0, NULL, 0);
+	if (res < 0) {
+		wpa_printf(MSG_ERROR, "i802_send_soap - packet len: %lu - "
+			   "failed: %d (%s)",
+			   (unsigned long) len, errno, strerror(errno));
+	}
+	os_free(hdr);
+
+	return res;
+}
+#endif /* CONFIG_SOAP */
+
+
 static int wpa_driver_nl80211_sta_set_flags(void *priv, const u8 *addr,
 					    unsigned int total_flags,
 					    unsigned int flags_or,
@@ -9622,4 +9689,7 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
 #endif /* CONFIG_DRIVER_NL80211_QCA */
 	.configure_data_frame_filters = nl80211_configure_data_frame_filters,
 	.get_ext_capab = nl80211_get_ext_capab,
+#ifdef CONFIG_SOAP
+	.hapd_send_soap = wpa_driver_nl80211_hapd_send_soap,
+#endif /* CONFIG_SOAP */
 };

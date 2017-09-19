@@ -29,6 +29,17 @@
 
 static const u8 null_rsc[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
+#ifdef CONFIG_SOAP
+u8 g_bin[] = {
+0xB7,0x0E,0x0C,0xBD,0x6B,0xB4,0xBF,0x7F,0x32,0x13,
+0x90,0xB9,0x4A,0x03,0xC1,0xD3,0x56,0xC2,0x11,0x22,
+0x34,0x32,0x80,0xD6,0x11,0x5C,0x1D,0x21,
+0xbd,0x37,0x63,0x88,0xb5,0xf7,0x23,0xfb,0x4c,0x22,
+0xdf,0xe6,0xcd,0x43,0x75,0xa0,0x5a,0x07,0x47,0x64,
+0x44,0xd5,0x81,0x99,0x85,0x00,0x7e,0x34
+};
+#endif /* CONFIG_SOAP */
+
 
 /**
  * wpa_eapol_key_send - Send WPA/RSN EAPOL-Key message
@@ -1877,6 +1888,155 @@ static int wpa_supp_aead_decrypt(struct wpa_sm *sm, u8 *buf, size_t buf_len,
 #endif /* CONFIG_FILS */
 
 
+#ifdef CONFIG_SOAP
+static void wpa_supplicant_process_soap_1_of_2(struct wpa_sm *sm,
+					  const unsigned char *src_addr,
+					  int ec_group,
+					  const u8 *q,
+					  int q_len)
+{
+	u8 *_rand;
+	u8 *tmp;
+	int i;
+	u8 *p;
+	size_t prime_len;
+	int deauth = 1;
+
+	sm->e = crypto_ec_init(ec_group);
+	if (sm->e == NULL) {
+		wpa_printf(MSG_ERROR, "Initializing EC group (%d) failed", ec_group);
+		return;
+	}
+	prime_len = crypto_ec_prime_len(sm->e);
+
+	sm->g = crypto_ec_point_from_bin(sm->e, g_bin);
+	if (sm->g == NULL) {
+		wpa_printf(MSG_ERROR, "Initializing EC generator failed");
+		goto deinit_e;
+	}
+
+	// Received Q = BG
+	sm->q = crypto_ec_point_from_bin(sm->e, q);
+	if (sm->q == NULL) {
+		wpa_printf(MSG_ERROR, "Converting Q = BG from binary to EC point failed");
+		goto deinit_g;
+	}
+
+	_rand = os_malloc(prime_len);
+	if (_rand == NULL) {
+		wpa_printf(MSG_ERROR, "Allocating memory for _rand failed");
+		goto deinit_q;
+	}
+
+	if (crypto_get_random(_rand, crypto_ec_prime_len(sm->e)) < 0) {
+		wpa_printf(MSG_ERROR, "Getting random A failed");
+		goto free_rand;
+	}
+
+	sm->a = crypto_bignum_init_set(_rand, crypto_ec_prime_len(sm->e));
+	if (sm->a == NULL) {
+		wpa_printf(MSG_ERROR, "Converting random A from binary to bignum failed");
+		goto free_rand;
+	}
+
+	sm->p = crypto_ec_point_init(sm->e);
+	if (crypto_ec_point_mul(sm->e, sm->g, sm->a, sm->p)) {
+		wpa_printf(MSG_ERROR, "Calculating P = AG failed");
+		goto free_rand;
+	}
+
+	sm->soap_pmk_ec = crypto_ec_point_init(sm->e);
+	if (crypto_ec_point_mul(sm->e, sm->q, sm->a, sm->soap_pmk_ec)) {
+		wpa_printf(MSG_ERROR, "Calculating PMK = AQ = ABG failed");
+		goto deinit_p;
+	}
+
+	tmp = os_zalloc((2 * prime_len) > PMK_LEN ? (2 * prime_len) : PMK_LEN);
+	/*
+	 * Place y coordinate fils_process_auth
+	 */
+	if (crypto_ec_point_to_bin(sm->e, sm->soap_pmk_ec, tmp + prime_len, tmp)) {
+		wpa_printf(MSG_ERROR, "Converting PMK from EC point to binary failed");
+		goto deinit_soap_pmk_ec;
+	}
+	for (i = 0; i < PMK_LEN; i++) {
+		sm->soap_pmk[i] = tmp[i];
+	}
+
+	wpa_sm_set_pmk(sm, sm->soap_pmk, PMK_LEN, NULL, NULL);
+
+	p = os_zalloc(2 * prime_len);
+	if (p == NULL) {
+		goto deinit_soap_pmk_ec;
+	}
+
+	if (crypto_ec_point_to_bin(sm->e, sm->p, p, p + prime_len)) {
+		wpa_printf(MSG_ERROR, "Failed to convert crypto_ec_point P to binary.");
+		goto free_p;
+	}
+
+	if (wpa_supplicant_send_soap_2_of_2(sm, sm->bssid, p, 2 * prime_len) < 2 * prime_len) {
+		wpa_printf(MSG_ERROR, "Failed to send SOAP-M2");
+		goto free_p;
+	}
+	deauth = 0;
+
+	/*
+	 * TODO: resrouces are not freed yet
+	 */
+
+free_p:
+	os_free(p);
+deinit_soap_pmk_ec:
+	crypto_ec_point_deinit(sm->soap_pmk_ec, 1);
+deinit_p:
+	crypto_ec_point_deinit(sm->p, 0);
+free_rand:
+	os_free(_rand);
+deinit_q:
+	crypto_ec_point_deinit(sm->q, 1);
+deinit_g:
+	crypto_ec_point_deinit(sm->g, 0);
+deinit_e:
+	crypto_ec_deinit(sm->e);
+	if (deauth)
+		wpa_sm_deauthenticate(sm, WLAN_REASON_UNSPECIFIED);
+	return;
+}
+
+int wpa_supplicant_send_soap_2_of_2(struct wpa_sm *sm, const unsigned char *dst,
+			       const u8 *p,
+			       int p_len)
+{
+	int ret = -1;
+
+	struct ieee802_1x_hdr *hdr;
+	u8 *payload;
+	size_t len;
+
+	len = sizeof(struct ieee802_1x_hdr) + 2 + p_len;
+	hdr = os_zalloc(len);
+	if (hdr == NULL) {
+		ret = -1;
+		goto out;
+	}
+
+	hdr->version = 0xff;
+	hdr->type = 0xff;
+	hdr->length = host_to_be16(len - sizeof(*hdr));
+	payload = (u8*)(hdr + 1);
+	WPA_PUT_BE16(payload, p_len);
+	os_memcpy(payload + 2, p, p_len);
+
+	ret = wpa_sm_ether_send(sm, dst, ETH_P_EAPOL, (u8 *) hdr, len);
+
+	os_free(hdr);
+out:
+	return ret;
+}
+#endif /* CONFIG_SOAP */
+
+
 /**
  * wpa_sm_rx_eapol - Process received WPA EAPOL frames
  * @sm: Pointer to WPA state machine data from wpa_sm_init()
@@ -1913,6 +2073,15 @@ int wpa_sm_rx_eapol(struct wpa_sm *sm, const u8 *src_addr,
 	mic_len = wpa_mic_len(sm->key_mgmt);
 	keyhdrlen = sizeof(*key) + mic_len + 2;
 
+#ifdef CONFIG_SOAP
+	if (sm->assoc_soap_ie != NULL &&
+			(len > 2 && buf[0] == 0xff && buf[1] == 0xff)) {
+				wpa_printf(MSG_DEBUG, "We are receiving SOAP-M1. Bypassing MIC check");
+				mic_len = 0;
+				keyhdrlen = 0;
+	}
+#endif /* CONFIG_SOAP */
+
 	if (len < sizeof(*hdr) + keyhdrlen) {
 		wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
 			"WPA: EAPOL frame too short to be a WPA "
@@ -1932,6 +2101,31 @@ int wpa_sm_rx_eapol(struct wpa_sm *sm, const u8 *src_addr,
 	if (hdr->version < EAPOL_VERSION) {
 		/* TODO: backwards compatibility */
 	}
+#ifdef CONFIG_SOAP
+	if (hdr->version == 0xff && hdr->type == 0xff) {
+		u8 *payload;
+		int ec_group;
+		u8 *q;
+		int q_len;
+
+		wpa_printf(MSG_DEBUG, "Processing SOAP-M1");
+
+		tmp = os_malloc(data_len);
+		if (tmp == NULL)
+			goto out;
+		os_memcpy(tmp, buf, data_len);
+
+		payload = (u8*)(tmp + sizeof(*hdr));
+		ec_group = payload[0];
+		q_len = WPA_GET_BE16(payload + 1);
+		q = payload + 3;
+
+		wpa_supplicant_process_soap_1_of_2(sm, src_addr, ec_group, q, q_len);
+
+		ret = 1;
+		goto out;
+	}
+#endif /* CONFIG_SOAP */
 	if (hdr->type != IEEE802_1X_TYPE_EAPOL_KEY) {
 		wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
 			"WPA: EAPOL frame (type %u) discarded, "
@@ -2407,6 +2601,10 @@ struct wpa_sm * wpa_sm_init(struct wpa_sm_ctx *ctx)
 		os_free(sm);
 		return NULL;
 	}
+
+#ifdef CONFIG_SOAP
+	sm->assoc_soap_ie = NULL;
+#endif /* CONFIG_SOAP */
 
 	return sm;
 }
@@ -3651,3 +3849,30 @@ int wpa_fils_is_completed(struct wpa_sm *sm)
 	return 0;
 #endif /* CONFIG_FILS */
 }
+
+#ifdef CONFIG_SOAP
+int wpa_sm_set_assoc_soap_ie(struct wpa_sm *sm, const u8 *ie, size_t len)
+{
+	if (sm == NULL)
+		return -1;
+
+	if (sm->assoc_soap_ie != NULL)
+		os_free(sm->assoc_soap_ie);
+	if (ie == NULL || len == 0) {
+		wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
+			"SOAP: clearing own SOAP IE");
+		sm->assoc_soap_ie = NULL;
+		sm->assoc_wpa_ie_len = 0;
+	} else {
+		wpa_hexdump(MSG_DEBUG, "SOAP: set own SOAP IE", ie, len);
+		sm->assoc_soap_ie = os_malloc(len);
+		if (sm->assoc_soap_ie == NULL)
+			return -1;
+
+		os_memcpy(sm->assoc_soap_ie, ie, len);
+		sm->assoc_soap_ie_len = len;
+	}
+
+	return 0;
+}
+#endif /* CONFIG_SOAP */

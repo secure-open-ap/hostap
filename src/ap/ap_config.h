@@ -329,6 +329,10 @@ struct hostapd_bss_config {
 	char *rsn_preauth_interfaces;
 	int peerkey;
 
+#ifdef CONFIG_SOAP
+	int soap; /* use SOAP */
+#endif /* CONFIG_SOAP */
+
 #ifdef CONFIG_IEEE80211R_AP
 	/* IEEE 802.11r - Fast BSS Transition */
 	u8 mobility_domain[MOBILITY_DOMAIN_ID_LEN];

@@ -31,6 +31,9 @@
 #include "dfs.h"
 #include "taxonomy.h"
 
+#ifdef CONFIG_SOAP
+#include "ap/soap.h"
+#endif /* CONFIG_SOAP */
 
 #ifdef NEED_AP_MLME
 
@@ -394,6 +397,11 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 
 	buflen += hostapd_mbo_ie_len(hapd);
 
+#ifdef CONFIG_SOAP
+	buflen += hostapd_soap_ie_len(hapd);
+	wpa_printf(MSG_DEBUG, "Increase buffer length of probe response frame for SOAP IE");
+#endif /* CONFIG_SOAP */
+
 	resp = os_zalloc(buflen);
 	if (resp == NULL)
 		return NULL;
@@ -537,6 +545,18 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 			  wpabuf_len(hapd->conf->vendor_elements));
 		pos += wpabuf_len(hapd->conf->vendor_elements);
 	}
+
+#ifdef CONFIG_SOAP
+	/*
+	 * SOAP TODO: Currently, SOAP is implemented based on assumption that WPA is used,
+	 * but should support open system and shared key system (WEP) by running WPA
+	 * dedicated for SOAP.
+	 */
+	if (hapd->conf->soap && (hapd->conf->wpa & (WPA_PROTO_WPA | WPA_PROTO_RSN))) {
+		pos = hostapd_eid_soap(hapd, pos);
+		wpa_printf(MSG_DEBUG, "Insert SOAP IE into probe response frame");
+	}
+#endif /* CONFIG_SOAP */
 
 	*resp_len = pos - (u8 *) resp;
 	return (u8 *) resp;
@@ -1042,6 +1062,11 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
 
 	tail_len += hostapd_mbo_ie_len(hapd);
 
+#ifdef CONFIG_SOAP
+	tail_len += hostapd_soap_ie_len(hapd);
+	wpa_printf(MSG_DEBUG, "Increase buffer length of beacon frame for SOAP IE");
+#endif /* CONFIG_SOAP */
+
 	tailpos = tail = os_malloc(tail_len);
 	if (head == NULL || tail == NULL) {
 		wpa_printf(MSG_ERROR, "Failed to set beacon data");
@@ -1207,6 +1232,18 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
 			  wpabuf_len(hapd->conf->vendor_elements));
 		tailpos += wpabuf_len(hapd->conf->vendor_elements);
 	}
+
+#ifdef CONFIG_SOAP
+	/*
+	 * SOAP TODO: Currently, SOAP is implemented based on assumption that WPA is used,
+	 * but should support open system and shared key system (WEP) by running WPA
+	 * dedicated for SOAP.
+	 */
+	if (hapd->conf->soap && (hapd->conf->wpa & (WPA_PROTO_WPA | WPA_PROTO_RSN))) {
+		tailpos = hostapd_eid_soap(hapd, tailpos);
+		wpa_printf(MSG_DEBUG, "Insert SOAP IE into beacon frame");
+	}
+#endif /* CONFIG_SOAP */
 
 	tail_len = tailpos > tail ? tailpos - tail : 0;
 

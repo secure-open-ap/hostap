@@ -347,4 +347,18 @@ static inline int hostapd_drv_stop_ap(struct hostapd_data *hapd)
 	return hapd->driver->stop_ap(hapd->drv_priv);
 }
 
+#ifdef CONFIG_SOAP
+static inline int hostapd_drv_hapd_send_soap(struct hostapd_data *hapd,
+					      const u8 *addr,  const u8 *data,
+					      size_t data_len, int encrypt,
+					      u32 flags)
+{
+	if (hapd->driver == NULL || hapd->driver->hapd_send_soap == NULL)
+		return 0;
+	return hapd->driver->hapd_send_soap(hapd->drv_priv, addr, data,
+					     data_len, encrypt,
+					     hapd->own_addr, flags);
+}
+#endif /* CONFIG_SOAP */
+
 #endif /* AP_DRV_OPS */

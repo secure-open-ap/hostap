@@ -434,4 +434,8 @@ struct wpabuf * fils_build_assoc_req(struct wpa_sm *sm, const u8 **kek,
 int fils_process_assoc_resp(struct wpa_sm *sm, const u8 *resp, size_t len);
 int wpa_fils_is_completed(struct wpa_sm *sm);
 
+#ifdef CONFIG_SOAP
+int wpa_sm_set_assoc_soap_ie(struct wpa_sm *sm, const u8 *ie, size_t len);
+#endif /* CONFIG_SOAP */
+
 #endif /* WPA_H */
