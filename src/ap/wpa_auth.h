@@ -113,6 +113,9 @@ struct ft_r0kh_r1kh_push_frame {
 /* per STA state machine data */
 
 struct wpa_authenticator;
+#ifdef CONFIG_SOAP
+struct wpa_soap;
+#endif /* CONFIG_SOAP */
 struct wpa_state_machine;
 struct rsn_pmksa_cache_entry;
 struct eapol_state_machine;
@@ -247,7 +250,7 @@ enum {
 	WPA_MGMT_FRAME_PROTECTION_VIOLATION, WPA_INVALID_MGMT_GROUP_CIPHER,
 	WPA_INVALID_MDIE, WPA_INVALID_PROTO
 };
-	
+
 int wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
 			struct wpa_state_machine *sm,
 			const u8 *wpa_ie, size_t wpa_ie_len,
@@ -266,6 +269,11 @@ void wpa_auth_sta_deinit(struct wpa_state_machine *sm);
 void wpa_receive(struct wpa_authenticator *wpa_auth,
 		 struct wpa_state_machine *sm,
 		 u8 *data, size_t data_len);
+#ifdef CONFIG_SOAP
+void soap_receive(struct wpa_soap *wpa_soap,
+		 struct wpa_state_machine *sm,
+		 u8 *data, size_t data_len);
+#endif /* CONFIG_SOAP */
 enum wpa_event {
 	WPA_AUTH, WPA_ASSOC, WPA_DISASSOC, WPA_DEAUTH, WPA_REAUTH,
 	WPA_REAUTH_EAPOL, WPA_ASSOC_FT

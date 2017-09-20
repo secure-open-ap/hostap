@@ -29,6 +29,10 @@
 #include "sme.h"
 #include "hs20_supplicant.h"
 
+#ifdef CONFIG_SOAP
+#include "rsn_supp/soap.h"
+#endif /* CONFIG_SOAP */
+
 #define SME_AUTH_TIMEOUT 5
 #define SME_ASSOC_TIMEOUT 5
 
@@ -1030,6 +1034,29 @@ void sme_associate(struct wpa_supplicant *wpa_s, enum wpas_mode mode,
 	}
 #endif /* CONFIG_FILS */
 
+#ifdef CONFIG_SOAP
+		if (wpa_s->soap) {
+			struct wpabuf *buf;
+
+			buf = soap_build_assoc_req(wpa_s->soap);
+			if (!buf) {
+				return;
+			}
+			if (wpa_s->sme.assoc_req_ie_len + wpabuf_len(buf) >
+			    sizeof(wpa_s->sme.assoc_req_ie)) {
+				wpa_printf(MSG_ERROR,
+					   "SOAP: Not enough buffer room for SOAP element");
+				wpabuf_free(buf);
+				return;
+			}
+			os_memcpy(wpa_s->sme.assoc_req_ie + wpa_s->sme.assoc_req_ie_len,
+				  wpabuf_head(buf), wpabuf_len(buf));
+			wpa_s->sme.assoc_req_ie_len += wpabuf_len(buf);
+			wpabuf_free(buf);
+
+		}
+#endif /* CONFIG_SOAP */
+
 	params.bssid = bssid;
 	params.ssid = wpa_s->sme.ssid;
 	params.ssid_len = wpa_s->sme.ssid_len;
@@ -1082,6 +1109,17 @@ void sme_associate(struct wpa_supplicant *wpa_s, enum wpas_mode mode,
 		wpa_dbg(wpa_s, MSG_DEBUG, "SME: Could not parse own IEs?!");
 		os_memset(&elems, 0, sizeof(elems));
 	}
+#ifdef CONFIG_SOAP
+	/*
+	 * NOTE: This should be done independently
+	 */
+	if (elems.soap_ie) {
+		params.soap = 1;
+		wpa_dbg(wpa_s, MSG_DEBUG, "SOAP: Setting Assoc SOAP IE");
+		wpa_sm_set_assoc_soap_ie(wpa_s->wpa, elems.soap_ie - 2,
+					elems.soap_len + 2);
+	}
+#endif /* CONFIG_SOAP */
 	if (elems.rsn_ie) {
 		params.wpa_proto = WPA_PROTO_RSN;
 		wpa_sm_set_assoc_wpa_ie(wpa_s->wpa, elems.rsn_ie - 2,

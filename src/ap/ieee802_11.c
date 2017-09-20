@@ -46,6 +46,10 @@
 #include "rrm.h"
 #include "taxonomy.h"
 
+#ifdef CONFIG_SOAP
+#include "wpa_soap.h"
+#endif /* CONFIG_SOAP */
+
 
 u8 * hostapd_eid_supp_rates(struct hostapd_data *hapd, u8 *eid)
 {
@@ -2048,6 +2052,22 @@ static u16 check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
 			return WLAN_STATUS_CIPHER_REJECTED_PER_POLICY;
 		}
 #endif /* CONFIG_IEEE80211N */
+#ifdef CONFIG_SOAP
+		sta->soap = 0;
+		if (hapd->conf->soap && elems.soap_ie) {
+			/*
+			 * TODO: Currently, SOAP is a simple Boolean TRUE or FALSE
+			 */
+			if (elems.soap_ie[0]) {
+				sta->soap = elems.soap_ie[0];
+			}
+		}
+		wpa_printf(MSG_DEBUG, "STA wants to use SOAP?: %d", sta->soap);
+		if (wpa_soap_sta_init(sta->wpa_sm, hapd->wpa_soap, sta->addr, sta->soap)) {
+			wpa_printf(MSG_WARNING, "Failed to initialize SOAP for STA");
+			return WLAN_STATUS_UNSPECIFIED_FAILURE;
+		}
+#endif /* CONFIG_SOAP */
 #ifdef CONFIG_HS20
 	} else if (hapd->conf->osen) {
 		if (elems.osen == NULL) {

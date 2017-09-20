@@ -78,6 +78,9 @@ struct ieee802_11_elems {
 	const u8 *fils_wrapped_data;
 	const u8 *fils_pk;
 	const u8 *fils_nonce;
+#ifdef CONFIG_SOAP
+	const u8 *soap_ie;
+#endif /* CONFIG_SOAP */
 
 	u8 ssid_len;
 	u8 supp_rates_len;
@@ -120,6 +123,9 @@ struct ieee802_11_elems {
 	u8 key_delivery_len;
 	u8 fils_wrapped_data_len;
 	u8 fils_pk_len;
+#ifdef CONFIG_SOAP
+	u8 soap_len;
+#endif /* CONFIG_SOAP */
 
 	struct mb_ies_info mb_ies;
 };

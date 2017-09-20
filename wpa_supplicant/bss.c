@@ -29,6 +29,9 @@
 #define WPA_BSS_WPS_CHANGED_FLAG	BIT(6)
 #define WPA_BSS_RATES_CHANGED_FLAG	BIT(7)
 #define WPA_BSS_IES_CHANGED_FLAG	BIT(8)
+#ifdef CONFIG_SOAP
+#define WPA_BSS_SOAPIE_CHANGED_FLAG BIT(9)
+#endif /* CONFIG_SOAP */
 
 
 static void wpa_bss_set_hessid(struct wpa_bss *bss)
@@ -481,6 +484,9 @@ static int are_ies_equal(const struct wpa_bss *old,
 	case WLAN_EID_RSN:
 	case WLAN_EID_SUPP_RATES:
 	case WLAN_EID_EXT_SUPP_RATES:
+#ifdef CONFIG_SOAP
+	case WLAN_EID_SOAP:
+#endif /* CONFIG_SOAP */
 		old_ie = wpa_bss_get_ie(old, ie);
 		new_ie = wpa_scan_get_ie(new_res, ie);
 		is_multi = 0;
@@ -551,6 +557,11 @@ static u32 wpa_bss_compare_res(const struct wpa_bss *old,
 	    !are_ies_equal(old, new_res, WLAN_EID_EXT_SUPP_RATES))
 		changes |= WPA_BSS_RATES_CHANGED_FLAG;
 
+#ifdef CONFIG_SOAP
+	if (!are_ies_equal(old, new_res, WLAN_EID_SOAP))
+		changes |= WPA_BSS_SOAPIE_CHANGED_FLAG;
+#endif /* CONFIG_SOAP */
+
 	return changes;
 }
 
@@ -584,6 +595,11 @@ static void notify_bss_changes(struct wpa_supplicant *wpa_s, u32 changes,
 
 	if (changes & WPA_BSS_RATES_CHANGED_FLAG)
 		wpas_notify_bss_rates_changed(wpa_s, bss->id);
+
+#ifdef CONFIG_SOAP
+	if (changes & WPA_BSS_SOAPIE_CHANGED_FLAG)
+		wpas_notify_bss_soapie_changed(wpa_s, bss->id);
+#endif /* CONFIG_SOAP */
 
 	wpas_notify_bss_seen(wpa_s, bss->id);
 }

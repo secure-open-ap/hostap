@@ -225,6 +225,11 @@ struct sta_info {
 	u8 fils_snonce[FILS_NONCE_LEN];
 	u8 fils_session[FILS_SESSION_LEN];
 #endif /* CONFIG_FILS */
+
+#ifdef CONFIG_SOAP
+	u8 soap;
+	struct soap_state_machine *soap_sm;
+#endif /* CONFIG_SOAP */
 };
 
 

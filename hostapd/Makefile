@@ -562,6 +562,14 @@ LIBS += -ldl
 endif
 endif
 
+ifdef CONFIG_SOAP
+CFLAGS += -DCONFIG_SOAP
+NEED_ECC=y
+NEED_DH_GROUPS=y
+OBJS += ../src/ap/soap.o
+OBJS += ../src/ap/wpa_soap.o
+endif
+
 # Basic EAP functionality is needed for EAPOL
 OBJS += eap_register.o
 OBJS += ../src/eap_server/eap_server.o

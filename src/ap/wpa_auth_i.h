@@ -13,6 +13,9 @@
 #define RSNA_MAX_EAPOL_RETRIES 4
 
 struct wpa_group;
+#ifdef CONFIG_SOAP
+#include "wpa_soap.h"
+#endif /* CONFIG_SOAP */
 
 struct wpa_stsl_negotiation {
 	struct wpa_stsl_negotiation *next;
@@ -24,6 +27,9 @@ struct wpa_stsl_negotiation {
 struct wpa_state_machine {
 	struct wpa_authenticator *wpa_auth;
 	struct wpa_group *group;
+#ifdef CONFIG_SOAP
+	struct wpa_soap *wpa_soap;
+#endif /* CONFIG_SOAP */
 
 	u8 addr[ETH_ALEN];
 	u8 p2p_dev_addr[ETH_ALEN];
@@ -42,6 +48,14 @@ struct wpa_state_machine {
 		WPA_PTK_GROUP_REKEYESTABLISHED,
 		WPA_PTK_GROUP_KEYERROR
 	} wpa_ptk_group_state;
+
+#ifdef CONFIG_SOAP
+	enum {
+		WPA_SOAP_UNINITIALIZED,
+		WPA_SOAP_INITIALIZE, WPA_SOAP_SENDSOAPM1, WPA_SOAP_DERIVEPSK,
+		WPA_SOAP_DONE
+	} wpa_soap_state;
+#endif /* CONFIG_SOAP */
 
 	Boolean Init;
 	Boolean DeauthenticationRequest;
@@ -76,6 +90,9 @@ struct wpa_state_machine {
 	Boolean PTKRequest; /* not in IEEE 802.11i state machine */
 	Boolean has_GTK;
 	Boolean PtkGroupInit; /* init request for PTK Group state machine */
+#ifdef CONFIG_SOAP
+	Boolean SOAPKeyReceived;
+#endif /* CONFIG_SOAP */
 
 	u8 *last_rx_eapol_key; /* starting from IEEE 802.1X header */
 	size_t last_rx_eapol_key_len;
@@ -185,9 +202,30 @@ struct wpa_group {
 
 struct wpa_ft_pmk_cache;
 
+#ifdef CONFIG_SOAP
+struct wpa_soap {
+	int sta_use_soap;
+	// const struct dh_group *dh_group;
+	struct crypto_ec *ec;
+	struct crypto_ec_point *generator;
+	struct crypto_bignum *bignum;
+	struct crypto_ec_point *pub_ap;
+	struct crypto_ec_point *pub_client;
+	struct crypto_ec_point *shared_ec;
+	u8 psk[PMK_LEN];
+
+	struct wpa_soap_callbacks cb;
+
+	u8 addr[ETH_ALEN];
+};
+#endif /* CONFIG_SOAP */
+
 /* per authenticator data */
 struct wpa_authenticator {
 	struct wpa_group *group;
+#ifdef CONFIG_SOAP
+	struct wpa_soap *soap;
+#endif /* CONFIG_SOAP */
 
 	unsigned int dot11RSNAStatsTKIPRemoteMICFailures;
 	u32 dot11RSNAAuthenticationSuiteSelected;
@@ -264,5 +302,11 @@ struct wpa_ft_pmk_cache * wpa_ft_pmk_cache_init(void);
 void wpa_ft_pmk_cache_deinit(struct wpa_ft_pmk_cache *cache);
 void wpa_ft_install_ptk(struct wpa_state_machine *sm);
 #endif /* CONFIG_IEEE80211R_AP */
+
+#ifdef CONFIG_SOAP
+void __wpa_send_soap(struct wpa_soap *wpa_soap,
+			   struct wpa_state_machine *sm, int ec_group,
+			   const u8 *q, int q_len, int encr);
+#endif /* CONFIG_SOAP */
 
 #endif /* WPA_AUTH_I_H */

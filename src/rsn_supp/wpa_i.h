@@ -148,6 +148,18 @@ struct wpa_sm {
 	size_t fils_key_auth_len;
 	unsigned int fils_completed:1;
 #endif /* CONFIG_FILS */
+
+#ifdef CONFIG_SOAP
+	u8 *assoc_soap_ie;
+	size_t assoc_soap_ie_len;
+	struct crypto_ec *e;
+	struct crypto_ec_point *g;
+	struct crypto_bignum *a;
+	struct crypto_ec_point *p;
+	struct crypto_ec_point *q;
+	struct crypto_ec_point *soap_pmk_ec;
+	u8 soap_pmk[PMK_LEN];
+#endif /* CONFIG_SOAP */
 };
 
 
@@ -375,6 +387,12 @@ int wpa_supplicant_send_4_of_4(struct wpa_sm *sm, const unsigned char *dst,
 			       const struct wpa_eapol_key *key,
 			       u16 ver, u16 key_info,
 			       struct wpa_ptk *ptk);
+
+#ifdef CONFIG_SOAP
+int wpa_supplicant_send_soap_2_of_2(struct wpa_sm *sm, const unsigned char *dst,
+		       const u8 *p,
+		       int p_len);
+#endif /* CONFIG_SOAP */
 
 int wpa_derive_ptk_ft(struct wpa_sm *sm, const unsigned char *src_addr,
 		      const struct wpa_eapol_key *key, struct wpa_ptk *ptk);
